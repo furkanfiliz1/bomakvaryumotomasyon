@@ -1,1 +1,1 @@
-Figopara Operational Portal
+# bomakvaryumotomasyon
