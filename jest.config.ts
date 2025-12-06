@@ -1,0 +1,21 @@
+module.exports = {
+  preset: 'ts-jest',
+  testEnvironment: 'jest-environment-jsdom',
+  setupFilesAfterEnv: ['<rootDir>/src/setupTests.ts'],
+  moduleNameMapper: {
+    '@api': '<rootDir>/src/api',
+    '@components': '<rootDir>/src/components',
+    '@hooks': '<rootDir>/src/hooks',
+    '@utils': '<rootDir>/src/utils',
+    '@store': '<rootDir>/src/store',
+    '@config': '<rootDir>/src/config',
+    '@pages': '<rootDir>/src/pages',
+    '@theme': '<rootDir>/src/theme',
+    '@types': '<rootDir>/src/types',
+    '@constant': '<rootDir>/src/constant',
+    '@helpers': '<rootDir>/src/helpers',
+    '@sockets': '<rootDir>/src/sockets',
+    '@validation': '<rootDir>/src/validation',
+    '@push-event': '<rootDir>/src/push-event',
+  },
+};
