@@ -77,7 +77,7 @@ export const rtkQueryErrorHandler: Middleware =
 
       // Handle authentication errors
       if (action.payload.status === 401) {
-        setTimeout(() => dispatch(authRedux.logout()), 100);
+       // setTimeout(() => dispatch(authRedux.logout()), 100);
         // if (RootNavigation.navigationRef?.getCurrentRoute()?.name !== Routes.LOGIN_SCREEN) {
         //  RootNavigation.replace(Routes.AUTH_ROOT as never);
         // }

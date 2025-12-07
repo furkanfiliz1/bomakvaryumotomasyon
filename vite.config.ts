@@ -26,6 +26,12 @@ export default defineConfig(({ mode }) => {
       'process.env.REACT_APP_SCORE_ROOT_URL': JSON.stringify(env.REACT_APP_SCORE_ROOT_URL),
       'process.env.REACT_APP_INVOICE_OPERATION_ROOT_URL': JSON.stringify(env.REACT_APP_INVOICE_OPERATION_ROOT_URL),
       'process.env.REACT_APP_ANALYSIS_ROOT_URL': JSON.stringify(env.REACT_APP_ANALYSIS_ROOT_URL),
+      'process.env.VITE_FIREBASE_API_KEY': JSON.stringify(env.VITE_FIREBASE_API_KEY),
+      'process.env.VITE_FIREBASE_AUTH_DOMAIN': JSON.stringify(env.VITE_FIREBASE_AUTH_DOMAIN),
+      'process.env.VITE_FIREBASE_PROJECT_ID': JSON.stringify(env.VITE_FIREBASE_PROJECT_ID),
+      'process.env.VITE_FIREBASE_DATABASE_URL': JSON.stringify(env.VITE_FIREBASE_DATABASE_URL),
+
+
     },
     build: {
       outDir: mode === 'production' ? 'dist-production' : mode === 'demo' ? 'dist-demo' : 'dist',

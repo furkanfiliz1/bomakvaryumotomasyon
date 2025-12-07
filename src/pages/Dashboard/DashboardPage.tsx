@@ -1,339 +1,528 @@
-import { Icon, IconTypes } from '@components';
-import { ChevronRight } from '@mui/icons-material';
-import { Alert, Box, Button, Card, CircularProgress, Grid, Typography, useTheme } from '@mui/material';
-import { currencyFormatter } from '@utils';
-import dayjs from 'dayjs';
-import { useNavigate } from 'react-router-dom';
 import {
-  useGetDailyCompanyActivityCountByAllowanceStatusQuery,
-  useGetDailyCompanyIntegrationCountQuery,
-  useGetDailyInvoiceStatsQuery,
-  useGetDailyPaymentStatsQuery,
-  useGetDailyRegisteredCompaniesQuery,
-} from './dashboard.api';
+  Box,
+  Button,
+  TextField,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  Typography,
+  useTheme,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  CircularProgress,
+} from '@mui/material';
+import { useState, useEffect } from 'react';
+import { useNotice } from '@components';
+import { db } from '../../config/firebase';
+import { collection, addDoc, getDocs, deleteDoc, doc } from 'firebase/firestore';
 
-interface DashboardCard {
-  title: string;
-  value: string;
-  subtitle: string;
-  buttonText?: string;
-  icon: keyof typeof IconTypes;
-  overlayColor: string;
-  isLoading?: boolean;
-  buttonLink?: string;
+interface FishCategory {
+  id?: string;
+  name: string;
+  description?: string;
+  createdAt?: Date;
+}
+
+interface Fish {
+  id?: string;
+  name: string;
+  categoryId: string;
+  categoryName?: string;
+  createdAt?: Date;
 }
 
 const DashboardPage = () => {
   const theme = useTheme();
-  const navigate = useNavigate();
+  const notice = useNotice();
 
-  // Today's date in YYYY-MM-DD format
-  const today = dayjs().format('YYYY-MM-DD');
+  const [categories, setCategories] = useState<FishCategory[]>([]);
+  const [fishes, setFishes] = useState<Fish[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  // Fetch real data from APIs
-  const {
-    data: dailyRegisteredCompanies,
-    isLoading: isLoadingRegistrations,
-    error: errorRegistrations,
-  } = useGetDailyRegisteredCompaniesQuery();
-  const {
-    data: dailyIntegrationCount,
-    isLoading: isLoadingIntegrations,
-    error: errorIntegrations,
-  } = useGetDailyCompanyIntegrationCountQuery();
-  const {
-    data: dailyActivityCount,
-    isLoading: isLoadingActivity,
-    error: errorActivity,
-  } = useGetDailyCompanyActivityCountByAllowanceStatusQuery();
-  const {
-    data: dailyPaymentStats,
-    isLoading: isLoadingPayments,
-    error: errorPayments,
-  } = useGetDailyPaymentStatsQuery();
-  const {
-    data: dailyInvoiceStats,
-    isLoading: isLoadingInvoices,
-    error: errorInvoices,
-  } = useGetDailyInvoiceStatsQuery();
+  // Category Dialog
+  const [openCategoryDialog, setOpenCategoryDialog] = useState(false);
+  const [categoryName, setCategoryName] = useState('');
+  const [categoryDescription, setCategoryDescription] = useState('');
 
-  // Check if there are any errors
-  const hasErrors = errorRegistrations || errorIntegrations || errorActivity || errorPayments || errorInvoices;
+  // Fish Dialog
+  const [openFishDialog, setOpenFishDialog] = useState(false);
+  const [fishName, setFishName] = useState('');
+  const [selectedCategoryId, setSelectedCategoryId] = useState('');
 
-  // Helper function to safely get value or show fallback
-  const getSafeValue = (data: { Count?: number } | undefined, fallback: string = '0', isLoading: boolean = false) => {
-    if (isLoading) return '...';
-    if (!data || 'error' in data) return fallback;
-    return data.Count !== undefined ? String(data.Count) : fallback;
+  const loadCategories = async () => {
+    console.log('🔄 Kategoriler yükleniyor...');
+    setLoading(true);
+
+    try {
+      console.log('📍 Firestore collection: fishCategories');
+
+      const categoriesCollection = collection(db, 'fishCategories');
+      const snapshot = await getDocs(categoriesCollection);
+
+      console.log('📦 Firestore snapshot:', {
+        empty: snapshot.empty,
+        size: snapshot.size,
+      });
+
+      const categoriesArray: FishCategory[] = [];
+
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        console.log(`📝 Processing category [${doc.id}]:`, data);
+
+        const category: FishCategory = {
+          id: doc.id,
+          name: data.name || '',
+          description: data.description || '',
+          createdAt: data.createdAt?.toDate() || new Date(),
+        };
+
+        console.log('✅ Category processed:', category);
+        categoriesArray.push(category);
+      });
+
+      console.log('🎯 Final categories array:', categoriesArray);
+      console.log('🔢 Categories count:', categoriesArray.length);
+
+      setCategories(categoriesArray);
+      console.log('✅ setCategories called with:', categoriesArray);
+    } catch (error) {
+      console.error('❌ Categories loading error:', error);
+      notice({
+        variant: 'error',
+        title: 'Hata',
+        message: 'Kategoriler yüklenirken hata oluştu',
+        buttonTitle: 'Tamam',
+      });
+      setCategories([]);
+    } finally {
+      setLoading(false);
+      console.log('🏁 Categories loading finished');
+    }
   };
+  const loadFishes = async () => {
+    console.log('🐟 Balıklar yükleniyor...');
+    setLoading(true);
 
-  // Helper function to get overlay colors
-  const getOverlayColor = (overlayColor: string) => {
-    switch (overlayColor) {
-      case 'primary':
-        return theme.palette.primary[100];
-      case 'success':
-        return theme.palette.success[100];
-      case 'warning':
-        return theme.palette.warning[100];
-      case 'info':
-        return theme.palette.info.lighter;
-      case 'error':
-        return theme.palette.error[100];
-      default:
-        return theme.palette.grey[100];
+    try {
+      console.log('🎣 Firestore collection: fishes');
+
+      const fishesCollection = collection(db, 'fishes');
+      const snapshot = await getDocs(fishesCollection);
+
+      console.log('🐠 Firestore snapshot:', {
+        empty: snapshot.empty,
+        size: snapshot.size,
+      });
+
+      const fishesArray: Fish[] = [];
+
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        console.log(`🐟 Processing fish [${doc.id}]:`, data);
+
+        // Kategori adını bul
+        const category = categories.find((c) => c.id === data.categoryId);
+
+        const fish: Fish = {
+          id: doc.id,
+          name: data.name || '',
+          categoryId: data.categoryId || '',
+          categoryName: category?.name || 'Bilinmiyor',
+          createdAt: data.createdAt?.toDate() || new Date(),
+        };
+
+        console.log('✅ Fish processed:', fish);
+        fishesArray.push(fish);
+      });
+      console.log('🎯 Final fishes array:', fishesArray);
+      console.log('🔢 Fishes count:', fishesArray.length);
+
+      setFishes(fishesArray);
+      console.log('✅ setFishes called with:', fishesArray);
+    } catch (error) {
+      console.error('❌ Fishes loading error:', error);
+      notice({
+        variant: 'error',
+        title: 'Hata',
+        message: 'Balıklar yüklenirken hata oluştu',
+        buttonTitle: 'Tamam',
+      });
+      setFishes([]);
+    } finally {
+      setLoading(false);
+      console.log('🏁 Fishes loading finished');
     }
   };
 
-  // Helper function to get icon colors
-  const getIconColor = (overlayColor: string) => {
-    switch (overlayColor) {
-      case 'primary':
-        return theme.palette.primary[600];
-      case 'success':
-        return theme.palette.success[600];
-      case 'warning':
-        return theme.palette.warning[600];
-      case 'info':
-        return theme.palette.info.main;
-      case 'error':
-        return theme.palette.error[600];
-      default:
-        return theme.palette.grey[600];
+  // Load categories and fishes on mount
+  useEffect(() => {
+    console.log('🚀 Dashboard component mounting...');
+    loadCategories();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Load fishes after categories are loaded
+  useEffect(() => {
+    if (categories.length > 0) {
+      console.log('📊 Categories loaded, now loading fishes...');
+      loadFishes();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categories.length]);
+
+  const handleAddCategory = async () => {
+    if (!categoryName.trim()) {
+      notice({
+        variant: 'error',
+        title: 'Hata',
+        message: 'Kategori adı boş olamaz',
+        buttonTitle: 'Tamam',
+      });
+      return;
+    }
+
+    try {
+      setLoading(true);
+      console.log('➕ Kategori ekleniyor:', categoryName.trim());
+
+      const categoryData = {
+        name: categoryName.trim(),
+        description: categoryDescription.trim() || '',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      console.log('📝 Category data to save:', categoryData);
+
+      const categoriesCollection = collection(db, 'fishCategories');
+      const docRef = await addDoc(categoriesCollection, categoryData);
+      console.log('🆔 New category ID:', docRef.id);
+      console.log('✅ Category saved successfully');
+
+      notice({
+        variant: 'success',
+        title: 'Başarılı',
+        message: 'Kategori başarıyla eklendi',
+        buttonTitle: 'Tamam',
+      });
+
+      setCategoryName('');
+      setCategoryDescription('');
+      setOpenCategoryDialog(false);
+
+      await loadCategories();
+    } catch (error) {
+      console.error('❌ Category add error:', error);
+      notice({
+        variant: 'error',
+        title: 'Hata',
+        message: 'Kategori eklenirken hata oluştu',
+        buttonTitle: 'Tamam',
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
-  const dashboardStatsRow1: DashboardCard[] = [
-    {
-      title: 'Bugün üye olan firma sayısı',
-      value: getSafeValue(dailyRegisteredCompanies, '0', isLoadingRegistrations),
-      subtitle: 'Firma üye oldu.',
-      buttonText: 'Bugünün Kayıtlarını Gör ',
-      icon: 'users-plus',
-      overlayColor: 'primary',
-      isLoading: isLoadingRegistrations,
-      buttonLink: `/companies/all?startDate=${today}&endDate=${today}&type=1&page=1&pageSize=50&sort=InsertDateTime&sortType=Desc&GetByIntegrators=false`,
-    },
-    {
-      title: 'Bugün entegratör bağlayan firma sayısı',
-      value: getSafeValue(dailyIntegrationCount, '0', isLoadingIntegrations),
-      subtitle: 'Firma entegratör bağladı.',
-      buttonText: 'Bugünün Kayıtlarını Gör ',
-      icon: 'link-01',
-      overlayColor: 'primary',
-      isLoading: isLoadingIntegrations,
-      buttonLink: '/companies/all',
-    },
-    {
-      title: 'Bugün işlem geçiren firma sayısı',
-      value: getSafeValue(dailyActivityCount, '0', isLoadingActivity),
-      subtitle: 'Firma işlem geçirdi.',
-      buttonText: 'Bugünün Kayıtlarını Gör ',
-      icon: 'activity',
-      overlayColor: 'primary',
-      isLoading: isLoadingActivity,
-      buttonLink: '/iskonto-islemleri',
-    },
-  ];
+  const handleAddFish = async () => {
+    if (!fishName.trim() || !selectedCategoryId) {
+      notice({
+        variant: 'error',
+        title: 'Hata',
+        message: 'Balık adı ve kategori seçimi zorunludur',
+        buttonTitle: 'Tamam',
+      });
+      return;
+    }
 
-  const dashboardStatsRow2: DashboardCard[] = [
-    {
-      title: 'Günlük toplam işlem adedi ve ücreti',
-      value: isLoadingPayments
-        ? '...'
-        : `${dailyPaymentStats?.Count || 0} | ${currencyFormatter(dailyPaymentStats?.TotalAmount || 0, 'TRY')}`,
-      subtitle: 'Günlük toplam işlem adedi ve ücreti',
-      buttonText: 'Bugünün İşlem ücretlerini gör ',
-      icon: 'bar-chart-01',
-      overlayColor: 'warning',
-      isLoading: isLoadingPayments,
-      buttonLink: `/pricing/operasyon-ucretlendirme?page=1&pageSize=25&startPaymentDate=${today}&endPaymentDate=${today}`,
-    },
-    {
-      title: 'Tedarikçi Finansmanı',
-      value: isLoadingPayments
-        ? '...'
-        : `${dailyPaymentStats?.SupplierFinancing?.Count || 0} | ${currencyFormatter(
-            dailyPaymentStats?.SupplierFinancing?.Amount || 0,
-            'TRY',
-          )}`,
-      subtitle: `%${(dailyPaymentStats?.SupplierFinancing?.Percentage || 0).toFixed(2)}`,
-      icon: 'truck-01',
-      overlayColor: 'warning',
-      isLoading: isLoadingPayments,
-    },
-    {
-      title: 'Fatura Finansmanı',
-      value: isLoadingPayments
-        ? '...'
-        : `${dailyPaymentStats?.SMBFinancing?.Count || 0} | ${currencyFormatter(
-            dailyPaymentStats?.SMBFinancing?.Amount || 0,
-            'TRY',
-          )}`,
-      subtitle: `%${(dailyPaymentStats?.SMBFinancing?.Percentage || 0).toFixed(2)}`,
-      icon: 'receipt',
-      overlayColor: 'warning',
-      isLoading: isLoadingPayments,
-    },
-  ];
+    try {
+      setLoading(true);
+      console.log('🐟 Balık ekleniyor:', fishName.trim());
 
-  const dashboardStatsRow3: DashboardCard[] = [
-    {
-      title: 'Bugün yüklenen fatura adedi ve tutarı',
-      value: isLoadingInvoices
-        ? '...'
-        : `${dailyInvoiceStats?.Count || 0} | ${currencyFormatter(dailyInvoiceStats?.TotalAmount || 0, 'TRY')}`,
-      subtitle: 'Bugün yüklenen fatura adedi ve tutarı',
-      buttonText: 'Bugünün Kayıtlarını Gör ',
-      icon: 'upload-01',
-      overlayColor: 'success',
-      isLoading: isLoadingInvoices,
-      buttonLink: `/invoice-operations/invoice-report?page=1&pageSize=50&notifyBuyer=1&isDeleted=0&sort=InsertDatetime&sortType=Asc&startDate=${today}&endDate=${today}&status=1&currencyId=1`,
-    },
-    {
-      title: 'Tedarikçi Finansmanı',
-      value: isLoadingInvoices
-        ? '...'
-        : `${dailyInvoiceStats?.SupplierFinancing?.Count || 0} | ${currencyFormatter(
-            dailyInvoiceStats?.SupplierFinancing?.TotalAmount || 0,
-            'TRY',
-          )}`,
-      subtitle: `%${(dailyInvoiceStats?.SupplierFinancing?.Percentage || 0).toFixed(2)}`,
-      buttonText: 'Bugünün Kayıtlarını Gör ',
-      icon: 'truck-01',
-      overlayColor: 'success',
-      isLoading: isLoadingInvoices,
-      buttonLink: `/invoice-operations/invoice-report?page=1&pageSize=50&notifyBuyer=1  &isDeleted=0&sort=InsertDatetime&sortType=Asc&startDate=${today}&endDate=${today}&status=1&currencyId=1`,
-    },
-    {
-      title: 'Fatura Finansmanı',
-      value: isLoadingInvoices
-        ? '...'
-        : `${dailyInvoiceStats?.SMBFinancing?.Count || 0} | ${currencyFormatter(
-            dailyInvoiceStats?.SMBFinancing?.TotalAmount || 0,
-            'TRY',
-          )}`,
-      subtitle: `%${(dailyInvoiceStats?.SMBFinancing?.Percentage || 0).toFixed(2)}`,
-      buttonText: 'Bugünün Kayıtlarını Gör ',
-      icon: 'receipt',
-      overlayColor: 'success',
-      isLoading: isLoadingInvoices,
-      buttonLink: `/invoice-operations/invoice-report?page=1&pageSize=50&notifyBuyer=0&isDeleted=0&sort=InsertDatetime&sortType=Asc&startDate=${today}&endDate=${today}&status=1&currencyId=1`,
-    },
-  ];
+      const fishData = {
+        name: fishName.trim(),
+        categoryId: selectedCategoryId,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
 
-  const renderCard = (stat: DashboardCard, index: number) => (
-    <Grid item xs={12} md={4} key={index}>
-      <Card
-        sx={{
-          p: 3,
-          display: 'flex',
-          flexDirection: 'column',
-          position: 'relative',
-          overflow: 'hidden',
-          height: '100%',
-          '&::before': {
-            content: '""',
-            position: 'absolute',
-            opacity: 0.5,
-            top: 0,
-            left: 0,
-            right: 0,
-            height: '4px',
-            background: getIconColor(stat.overlayColor),
-          },
-        }}>
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'flex-start',
-            justifyContent: 'space-between',
-            mb: 2,
-          }}>
-          <Box
-            sx={{
-              bgcolor: getOverlayColor(stat.overlayColor),
-              borderRadius: 2,
-              width: 30,
-              height: 30,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
+      console.log('🐠 Fish data to save:', fishData);
 
-              mr: 1,
-              border: `1px solid ${getIconColor(stat.overlayColor)}20`,
-            }}>
-            {stat.isLoading ? (
-              <CircularProgress size={16} color="inherit" />
-            ) : (
-              <Icon icon={stat.icon} size={16} color={getIconColor(stat.overlayColor)} />
-            )}
-          </Box>
-          <Typography variant="h6" fontWeight={500} color={theme.palette.dark[800]} sx={{ flex: 1 }}>
-            {stat.title}
-          </Typography>
-        </Box>
-        <Typography
-          variant="h4"
-          sx={{
-            color: theme.palette.neutral[600],
-            fontWeight: 600,
-            mb: 1,
-          }}>
-          {stat.value}
-        </Typography>
-        <Typography variant="body2" color={theme.palette.neutral[600]} mb={2} sx={{ flexGrow: 1 }}>
-          {stat.subtitle}
-        </Typography>
-        {stat.buttonText && (
-          <Button
-            variant="outlined"
-            size="small"
-            disabled={stat.isLoading}
-            onClick={() => {
-              if (stat.buttonLink) {
-                navigate(stat.buttonLink);
-              }
-            }}
-            sx={{
-              borderColor: theme.palette.neutral[300],
-              color: theme.palette.neutral[600],
-              '&:hover': { borderColor: theme.palette.neutral[400] },
-              alignSelf: 'flex-start',
-            }}>
-            {stat.buttonText}
-            <ChevronRight fontSize="small" />
-          </Button>
-        )}
-      </Card>
-    </Grid>
-  );
+      const fishesCollection = collection(db, 'fishes');
+      const docRef = await addDoc(fishesCollection, fishData);
+      console.log('🆔 New fish ID:', docRef.id);
+      console.log('✅ Fish saved successfully');
 
+      notice({
+        variant: 'success',
+        title: 'Başarılı',
+        message: 'Balık başarıyla eklendi',
+        buttonTitle: 'Tamam',
+      });
+
+      setFishName('');
+      setSelectedCategoryId('');
+      setOpenFishDialog(false);
+
+      await loadFishes();
+    } catch (error) {
+      console.error('❌ Fish add error:', error);
+      notice({
+        variant: 'error',
+        title: 'Hata',
+        message: 'Balık eklenirken hata oluştu',
+        buttonTitle: 'Tamam',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteCategory = async (id: string) => {
+    try {
+      setLoading(true);
+      console.log('❌ Kategori siliniyor:', id);
+
+      const categoryDoc = doc(db, 'fishCategories', id);
+      await deleteDoc(categoryDoc);
+      console.log('✅ Category deleted successfully');
+
+      notice({
+        variant: 'success',
+        title: 'Başarılı',
+        message: 'Kategori silindi',
+        buttonTitle: 'Tamam',
+      });
+
+      await loadCategories();
+    } catch (error) {
+      console.error('❌ Category delete error:', error);
+      notice({
+        variant: 'error',
+        title: 'Hata',
+        message: 'Kategori silinirken hata oluştu',
+        buttonTitle: 'Tamam',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+  const handleDeleteFish = async (id: string) => {
+    try {
+      setLoading(true);
+      console.log('❌ Balık siliniyor:', id);
+
+      const fishDoc = doc(db, 'fishes', id);
+      await deleteDoc(fishDoc);
+      console.log('✅ Fish deleted successfully');
+
+      notice({
+        variant: 'success',
+        title: 'Başarılı',
+        message: 'Balık silindi',
+        buttonTitle: 'Tamam',
+      });
+
+      await loadFishes();
+    } catch (error) {
+      console.error('❌ Fish delete error:', error);
+      notice({
+        variant: 'error',
+        title: 'Hata',
+        message: 'Balık silinirken hata oluştu',
+        buttonTitle: 'Tamam',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
   return (
-    <Box sx={{ p: 2 }}>
-      {/* Header */}
-
-      {/* Dashboard Stats - Row 1 */}
-      <Grid container spacing={2} mb={3}>
-        {dashboardStatsRow1.map((stat, index) => renderCard(stat, index))}
-      </Grid>
-
-      {/* Dashboard Stats - Row 2 */}
-      <Grid container spacing={2} mb={3}>
-        {dashboardStatsRow2.map((stat, index) => renderCard(stat, index))}
-      </Grid>
-
-      {/* Dashboard Stats - Row 3 */}
-      <Grid container spacing={2}>
-        {dashboardStatsRow3.map((stat, index) => renderCard(stat, index))}
-      </Grid>
-
-      {/* Error Handling - Display error message if any API call fails */}
-      {hasErrors && (
-        <Alert severity="error" sx={{ mt: 3 }}>
-          Veriler yüklenirken bir hata oluştu. Lütfen sayfayı yenileyin.
-        </Alert>
+    <Box sx={{ p: 3 }}>
+      {loading && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+          <CircularProgress />
+        </Box>
       )}
+
+      {/* Categories Section */}
+      <Box sx={{ mb: 4 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography variant="h4" sx={{ fontWeight: 600, color: theme.palette.dark[800] }}>
+            Balık Kategorileri
+          </Typography>
+          <Button
+            variant="contained"
+            onClick={() => setOpenCategoryDialog(true)}
+            sx={{ background: theme.palette.error[700], '&:hover': { background: theme.palette.error[800] } }}>
+            Yeni Kategori Ekle
+          </Button>
+        </Box>
+
+        <TableContainer component={Paper}>
+          <Table>
+            <TableHead sx={{ backgroundColor: theme.palette.grey[100] }}>
+              <TableRow>
+                <TableCell sx={{ fontWeight: 600 }}>Kategori Adı</TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>Açıklama</TableCell>
+                <TableCell sx={{ fontWeight: 600 }} align="right">
+                  İşlemler
+                </TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {categories.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={3} sx={{ textAlign: 'center', py: 3 }}>
+                    <Typography color={theme.palette.grey[600]}>Henüz kategori eklenmemiştir</Typography>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                categories.map((category) => (
+                  <TableRow key={category.id}>
+                    <TableCell>{category.name}</TableCell>
+                    <TableCell>{category.description || '-'}</TableCell>
+                    <TableCell align="right">
+                      <Button
+                        size="small"
+                        color="error"
+                        onClick={() => category.id && handleDeleteCategory(category.id)}>
+                        Sil
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Box>
+
+      {/* Fishes Section */}
+      <Box>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography variant="h4" sx={{ fontWeight: 600, color: theme.palette.dark[800] }}>
+            Balıklar
+          </Typography>
+          <Button
+            variant="contained"
+            onClick={() => setOpenFishDialog(true)}
+            sx={{ background: theme.palette.error[700], '&:hover': { background: theme.palette.error[800] } }}>
+            Yeni Balık Ekle
+          </Button>
+        </Box>
+
+        <TableContainer component={Paper}>
+          <Table>
+            <TableHead sx={{ backgroundColor: theme.palette.grey[100] }}>
+              <TableRow>
+                <TableCell sx={{ fontWeight: 600 }}>Balık Adı</TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>Kategori</TableCell>
+                <TableCell sx={{ fontWeight: 600 }} align="right">
+                  İşlemler
+                </TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {fishes.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={3} sx={{ textAlign: 'center', py: 3 }}>
+                    <Typography color={theme.palette.grey[600]}>Henüz balık eklenmemiştir</Typography>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                fishes.map((fish) => (
+                  <TableRow key={fish.id}>
+                    <TableCell>{fish.name}</TableCell>
+                    <TableCell>{fish.categoryName || 'Bilinmiyor'}</TableCell>
+                    <TableCell align="right">
+                      <Button size="small" color="error" onClick={() => fish.id && handleDeleteFish(fish.id)}>
+                        Sil
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Box>
+
+      {/* Add Category Dialog */}
+      <Dialog open={openCategoryDialog} onClose={() => setOpenCategoryDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontWeight: 600, color: theme.palette.dark[800] }}>Yeni Balık Kategorisi</DialogTitle>
+        <DialogContent sx={{ pt: 3 }}>
+          <TextField
+            autoFocus
+            fullWidth
+            label="Kategori Adı"
+            value={categoryName}
+            onChange={(e) => setCategoryName(e.target.value)}
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            fullWidth
+            label="Açıklama"
+            multiline
+            rows={3}
+            value={categoryDescription}
+            onChange={(e) => setCategoryDescription(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setOpenCategoryDialog(false)}>İptal</Button>
+          <Button
+            onClick={handleAddCategory}
+            variant="contained"
+            sx={{ background: theme.palette.error[700], '&:hover': { background: theme.palette.error[800] } }}>
+            Ekle
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Add Fish Dialog */}
+      <Dialog open={openFishDialog} onClose={() => setOpenFishDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontWeight: 600, color: theme.palette.dark[800] }}>Yeni Balık Ekle</DialogTitle>
+        <DialogContent sx={{ pt: 3 }}>
+          <TextField
+            autoFocus
+            fullWidth
+            label="Balık Adı"
+            value={fishName}
+            onChange={(e) => setFishName(e.target.value)}
+            sx={{ mb: 2 }}
+          />
+          <FormControl fullWidth>
+            <InputLabel>Kategori</InputLabel>
+            <Select value={selectedCategoryId} onChange={(e) => setSelectedCategoryId(e.target.value)} label="Kategori">
+              {categories.map((cat) => (
+                <MenuItem key={cat.id} value={cat.id}>
+                  {cat.name}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setOpenFishDialog(false)}>İptal</Button>
+          <Button
+            onClick={handleAddFish}
+            variant="contained"
+            sx={{ background: theme.palette.error[700], '&:hover': { background: theme.palette.error[800] } }}>
+            Ekle
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

@@ -1,29 +1,14 @@
 import { Form, LoadingButton, fields, useNotice } from '@components';
 import { yupResolver } from '@hookform/resolvers/yup';
-import { useAppDispatch, useAppSelector, useErrorListener, useResponsive } from '@hooks';
-import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Typography, useTheme } from '@mui/material';
-import {
-  LoginRequestModel,
-  authRedux,
-  usePostSessionsAuthenticationCodeMutation,
-  usePostSessionsGetSaltMutation,
-  usePostSessionsMutation,
-  usePostUsersValidateUserEmailMutation,
-  usePutUsersUpdatePasswordMutation,
-} from '@store';
+import { useAppDispatch, useResponsive } from '@hooks';
+import { Box, Typography, useTheme } from '@mui/material';
+import { authRedux } from '@store';
 import yup from '@validation';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
-
-import { LoginErrorCodes, User } from '@types';
-
-import { SHOULD_PASSWORD_BE_ENCRYPTED } from '@config';
-import { encryptPassword, getFromParams } from '@helpers';
-import { cloneDeep } from 'lodash';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 const initialValues = {
-  Identifier: '',
   UserName: '',
   Password: '',
 };
@@ -32,68 +17,13 @@ export default function Login() {
   const notice = useNotice();
   const theme = useTheme();
   const smDown = useResponsive('down', 'sm');
-
   const navigate = useNavigate();
-  const emailToken = getFromParams('emailToken');
-  const returnUrl = getFromParams('returnUrl') ?? '/';
-
-  const [verifyToken, setverifyToken] = useState(emailToken);
-  const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [passwordModalCredentials, setPasswordModalCredentials] = useState<LoginRequestModel | null>(null);
-  const passwordModalForm = useForm({
-    defaultValues: {
-      NewPassword: '',
-      NewPasswordRepeat: '',
-    },
-    resolver: yupResolver(
-      yup.object({
-        NewPassword: fields.password
-          .required('Bu alan zorunludur')
-          .min(8, 'En az 8 karakterli olmalıdır')
-          .max(32, 'En fazla 32 karakterli olmalıdır')
-          .label('Yeni Şifre'),
-        NewPasswordRepeat: fields.password.required('Bu alan zorunludur').label('Şifre Tekrar'),
-      }),
-    ),
-  });
-
   const dispatch = useAppDispatch();
-  const registeredUser = useAppSelector((state) => state.auth.registeredUser);
-
-  const [loginRequest, { isLoading: loginLoader, error: loginError }] = usePostSessionsMutation();
-  const [loginWith2fa, { isLoading: twoFaLoader, error: twoFaError }] = usePostSessionsAuthenticationCodeMutation();
-  const [getSalt, { isLoading: isSaltLoader, error: saltError }] = usePostSessionsGetSaltMutation();
-  const [emailTokenVerify, { error: emailTokenError, isSuccess: emailTokenIsSuccess }] =
-    usePostUsersValidateUserEmailMutation();
-  const [resetPassword, { isLoading: isResetPasswordLoading, error: resetPasswordError }] =
-    usePutUsersUpdatePasswordMutation();
-
-  useErrorListener(saltError);
-  useErrorListener(twoFaError);
-  useErrorListener(resetPasswordError);
-
-  useEffect(() => {
-    if (loginError && 'data' in loginError) {
-      const { data } = loginError;
-      notice({
-        variant: 'error',
-        title: data?.Title,
-        message: data?.FriendlyMessage,
-        buttonTitle: 'Tamam',
-      });
-    }
-  }, [loginError, notice]);
+  const [isLoading, setIsLoading] = useState(false);
 
   const schema = yup.object({
-    Identifier: fields.text
-      .required('Bu alan zorunludur')
-      .label('VKN')
-      .meta({ maxLength: 11, autoFocus: true, inputType: 'number' }),
-    UserName: fields.text.required('Bu alan zorunludur').label('Kullanıcı Adı / E-Posta'),
-    Password: fields.password
-      .label('Şifre')
-      .min(8, 'En az 8 karakterli olmalıdır')
-      .max(32, 'En fazla 32 karakterli olmalıdır'),
+    UserName: fields.text.required('Bu alan zorunludur').label('Kullanıcı Adı'),
+    Password: fields.password.required('Bu alan zorunludur').label('Şifre'),
   });
 
   const form = useForm({
@@ -101,142 +31,49 @@ export default function Login() {
     resolver: yupResolver(schema),
   });
 
-  useEffect(() => {
-    if (registeredUser && registeredUser.UserName) {
-      form.setValue('UserName', registeredUser.UserName ?? '');
-      form.setValue('Identifier', registeredUser.Identifier || '');
-    }
-  }, [form, registeredUser]);
+  const onSubmit = async (values: { UserName: string; Password: string }) => {
+    setIsLoading(true);
+    try {
+      // Test: hardcoded kullanıcı kontrolü
+      if (values.UserName === 'furkan' && values.Password === '123456') {
+        // Rastgele token oluştur
+        const token = `token_${Math.random().toString(36).substr(2, 9)}_${Date.now()}`;
 
-  const signIn = async (loginObject: LoginRequestModel) => {
-    const res = await loginRequest(loginObject);
+        // Redux store'a login işlemi yap
+        dispatch(
+          authRedux.login({
+            token,
+            user: {
+              userName: values.UserName,
+              email: 'furkan@example.com',
+            },
+          }),
+        );
 
-    if ('error' in res) {
-      if ('data' in res.error) {
-        switch (res?.error?.data.Code) {
-          case LoginErrorCodes.EmailNotVerified:
-            navigate('/email-verified', { state: { formValues: loginObject } });
-            break;
-          default:
-            break;
-        }
-      }
-    }
-    if ('data' in res) {
-      const token = res?.data?.Token || '';
-      const user = cloneDeep(res?.data?.User) as User;
-      dispatch(authRedux.login({ token, user: { ...user, EncryptPassword: loginObject.Password } }));
-      navigate(returnUrl);
-    }
-  };
-
-  const onSubmit = async (values: LoginRequestModel) => {
-    const saltRes = await getSalt({ UserName: values?.UserName, Identifier: values?.Identifier });
-    if (!('data' in saltRes)) return;
-
-    const loginObject: LoginRequestModel = {
-      ...values,
-      Password: encryptPassword(values.Password, saltRes.data),
-      IsPasswordEncrypted: SHOULD_PASSWORD_BE_ENCRYPTED,
-    };
-    const res = await loginWith2fa(loginObject);
-
-    if ('data' in res) {
-      if (!res.data?.IsTwoFactorAuthenticationIsActive) {
-        signIn(loginObject);
+        notice({
+          variant: 'success',
+          title: 'Başarılı',
+          message: `Hoşgeldiniz ${values.UserName}!`,
+          buttonTitle: 'Tamam',
+        });
+        navigate('/dashboard');
       } else {
-        navigate('/two-factor', { state: { values, userPhone: res.data?.UserContact, type: 'login' } });
+        notice({
+          variant: 'error',
+          title: 'Başarısız',
+          message: 'Kullanıcı adı veya şifre yanlış',
+          buttonTitle: 'Tamam',
+        });
       }
-    } else if ('data' in res.error) {
-      switch (res?.error?.data.Code) {
-        case LoginErrorCodes.PasswordExpired:
-          setPasswordModalCredentials(values);
-          setShowPasswordModal(true);
-          break;
-          break;
-        default:
-          break;
-      }
-    }
-  };
-
-  useEffect(() => {
-    if (emailTokenIsSuccess) {
-      window.history.pushState({}, document.title, '/');
-      setverifyToken(null);
-      notice({
-        variant: 'success',
-        title: 'Tebrikler!',
-        message: 'Email Adresiniz Doğrulandı.',
-        buttonTitle: 'Tamam',
-      });
-    }
-  }, [dispatch, emailTokenIsSuccess, notice]);
-
-  useEffect(() => {
-    if (verifyToken) emailTokenVerify({ accessToken: verifyToken });
-  }, [emailTokenVerify, verifyToken]);
-
-  useEffect(() => {
-    if (emailToken && emailToken !== verifyToken) setverifyToken(emailToken);
-  }, [emailToken, verifyToken]);
-
-  useEffect(() => {
-    if (emailTokenError && emailToken && verifyToken) {
-      window.history.pushState({}, document.title, '/');
-
-      setverifyToken(null);
-    }
-  }, [emailToken, emailTokenError, verifyToken]);
-
-  const onUpdatePassword = async (values: { NewPassword: string; NewPasswordRepeat: string }) => {
-    if (values.NewPassword !== values.NewPasswordRepeat) {
-      notice({
-        variant: 'error',
-        title: 'Başarısız',
-        message: 'Şifreler eşleşmiyor',
-        buttonTitle: 'Tamam',
-      });
-      return;
-    }
-
-    if (!passwordModalCredentials) {
+    } catch (error) {
       notice({
         variant: 'error',
         title: 'Hata',
-        message: 'Şifre bilgileri bulunamadı',
+        message: 'Giriş işlemi sırasında hata oluştu',
         buttonTitle: 'Tamam',
       });
-      return;
-    }
-
-    const saltRes = await getSalt({
-      UserName: passwordModalCredentials.UserName,
-      Identifier: passwordModalCredentials.Identifier,
-    });
-
-    if (!('data' in saltRes)) return;
-
-    const resetPasswordData = {
-      UserName: passwordModalCredentials.UserName,
-      Identifier: passwordModalCredentials.Identifier,
-      LastPassword: encryptPassword(passwordModalCredentials.Password, saltRes.data),
-      NewPassword: encryptPassword(values.NewPassword, saltRes.data),
-      IsPasswordEncrypted: SHOULD_PASSWORD_BE_ENCRYPTED,
-    };
-
-    const res = await resetPassword(resetPasswordData);
-
-    if ('data' in res) {
-      notice({
-        variant: 'success',
-        title: 'Başarılı',
-        message: 'Şifreniz başarıyla güncellenmiştir',
-        buttonTitle: 'Tamam',
-      });
-      setShowPasswordModal(false);
-      passwordModalForm.reset();
-      setPasswordModalCredentials(null);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -313,9 +150,12 @@ export default function Login() {
       </Box>
 
       <Box sx={{ maxWidth: smDown ? '90%' : '80%', mt: smDown ? 2 : 0, flex: 1, paddingBlock: 4 }}>
-        <Box sx={{ textAlign: 'center', mb: 1 }}>
+        <Box sx={{ textAlign: 'center', mb: 3 }}>
           <Typography variant="h2" component="div" sx={{ mb: 1 }} color={theme.palette.dark[800]} fontWeight={600}>
             Giriş Yap
+          </Typography>
+          <Typography variant="body2" color={theme.palette.grey[600]}>
+            Hesabınıza giriş yapın
           </Typography>
         </Box>
         <Form onSubmit={form.handleSubmit(onSubmit)} form={form} schema={schema}>
@@ -335,53 +175,12 @@ export default function Login() {
               },
             }}
             variant="contained"
-            loading={loginLoader || twoFaLoader || isSaltLoader}>
+            loading={isLoading}>
             Giriş Yap
           </LoadingButton>
         </Form>
       </Box>
       <Box></Box>
-
-      {/* Password Update Modal */}
-      <Dialog open={showPasswordModal} onClose={() => setShowPasswordModal(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ fontWeight: 600, color: theme.palette.dark[800] }}>Şifre Güncelleme</DialogTitle>
-        <DialogContent sx={{ pt: 3 }}>
-          <Typography variant="body2" sx={{ mb: 2, color: theme.palette.grey[600] }}>
-            Şifrenizin güncellenmesi gerekmektedir. Lütfen yeni şifrenizi giriniz.
-          </Typography>
-          <Form
-            form={passwordModalForm}
-            schema={yup.object({
-              NewPassword: fields.password
-                .required('Bu alan zorunludur')
-                .min(8, 'En az 8 karakterli olmalıdır')
-                .max(32, 'En fazla 32 karakterli olmalıdır')
-                .label('Yeni Şifre'),
-              NewPasswordRepeat: fields.password.required('Bu alan zorunludur').label('Şifre Tekrar'),
-            })}
-            space={1}
-          />
-        </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
-          <Button
-            onClick={() => {
-              setShowPasswordModal(false);
-              passwordModalForm.reset();
-              setPasswordModalCredentials(null);
-            }}
-            variant="outlined">
-            İptal
-          </Button>
-          <LoadingButton
-            id="UPDATE_PASSWORD"
-            onClick={passwordModalForm.handleSubmit(onUpdatePassword)}
-            variant="contained"
-            sx={{ background: theme.palette.error[700], '&:hover': { background: theme.palette.error[800] } }}
-            loading={isResetPasswordLoading}>
-            Güncelle
-          </LoadingButton>
-        </DialogActions>
-      </Dialog>
     </>
   );
 }

@@ -4,13 +4,16 @@ import { Link as RouterLink } from 'react-router-dom';
 
 const Logo = () => {
   const logo = (
-    <Box sx={{ mt: 1 }}>
-      <img src="/assets/logos/logo-black.svg" width="auto" height={30} alt="Figopara Logo" />
+    <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <img src="/assets/logos/logo.png" width="auto" height={90} alt="Figopara Logo" />
     </Box>
   );
 
   return (
-    <Box component={RouterLink} to="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center' }}>
+    <Box
+      component={RouterLink}
+      to="/"
+      style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', width: '100%' }}>
       {logo}
     </Box>
   );
