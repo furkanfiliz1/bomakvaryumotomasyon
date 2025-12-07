@@ -20,11 +20,14 @@ import {
   FormControl,
   InputLabel,
   CircularProgress,
+  IconButton,
 } from '@mui/material';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { useState, useEffect } from 'react';
 import { useNotice } from '@components';
 import { db } from '../../config/firebase';
-import { collection, addDoc, getDocs, deleteDoc, doc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 
 interface FishCategory {
   id?: string;
@@ -54,10 +57,22 @@ const DashboardPage = () => {
   const [categoryName, setCategoryName] = useState('');
   const [categoryDescription, setCategoryDescription] = useState('');
 
+  // Edit Category Dialog
+  const [openEditCategoryDialog, setOpenEditCategoryDialog] = useState(false);
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
+  const [editCategoryName, setEditCategoryName] = useState('');
+  const [editCategoryDescription, setEditCategoryDescription] = useState('');
+
   // Fish Dialog
   const [openFishDialog, setOpenFishDialog] = useState(false);
   const [fishName, setFishName] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState('');
+
+  // Edit Fish Dialog
+  const [openEditFishDialog, setOpenEditFishDialog] = useState(false);
+  const [editingFishId, setEditingFishId] = useState<string | null>(null);
+  const [editFishName, setEditFishName] = useState('');
+  const [editCategoryId, setEditCategoryId] = useState('');
 
   const loadCategories = async () => {
     console.log('🔄 Kategoriler yükleniyor...');
@@ -318,6 +333,66 @@ const DashboardPage = () => {
       setLoading(false);
     }
   };
+
+  const handleEditCategory = (category: FishCategory) => {
+    setEditingCategoryId(category.id || null);
+    setEditCategoryName(category.name);
+    setEditCategoryDescription(category.description || '');
+    setOpenEditCategoryDialog(true);
+  };
+
+  const handleUpdateCategory = async () => {
+    if (!editCategoryName.trim() || !editingCategoryId) {
+      notice({
+        variant: 'error',
+        title: 'Hata',
+        message: 'Kategori adı zorunludur',
+        buttonTitle: 'Tamam',
+      });
+      return;
+    }
+
+    try {
+      setLoading(true);
+      console.log('✏️ Kategori güncelleniyor:', editingCategoryId);
+
+      const categoryData = {
+        name: editCategoryName.trim(),
+        description: editCategoryDescription.trim() || '',
+        updatedAt: new Date(),
+      };
+
+      console.log('📝 Category data to update:', categoryData);
+
+      const categoryDoc = doc(db, 'fishCategories', editingCategoryId);
+      await updateDoc(categoryDoc, categoryData);
+      console.log('✅ Category updated successfully');
+
+      notice({
+        variant: 'success',
+        title: 'Başarılı',
+        message: 'Kategori başarıyla güncellendi',
+        buttonTitle: 'Tamam',
+      });
+
+      setEditingCategoryId(null);
+      setEditCategoryName('');
+      setEditCategoryDescription('');
+      setOpenEditCategoryDialog(false);
+
+      await loadCategories();
+    } catch (error) {
+      console.error('❌ Category update error:', error);
+      notice({
+        variant: 'error',
+        title: 'Hata',
+        message: 'Kategori güncellenirken hata oluştu',
+        buttonTitle: 'Tamam',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
   const handleDeleteFish = async (id: string) => {
     try {
       setLoading(true);
@@ -341,6 +416,66 @@ const DashboardPage = () => {
         variant: 'error',
         title: 'Hata',
         message: 'Balık silinirken hata oluştu',
+        buttonTitle: 'Tamam',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEditFish = (fish: Fish) => {
+    setEditingFishId(fish.id || null);
+    setEditFishName(fish.name);
+    setEditCategoryId(fish.categoryId);
+    setOpenEditFishDialog(true);
+  };
+
+  const handleUpdateFish = async () => {
+    if (!editFishName.trim() || !editCategoryId || !editingFishId) {
+      notice({
+        variant: 'error',
+        title: 'Hata',
+        message: 'Balık adı ve kategori seçimi zorunludur',
+        buttonTitle: 'Tamam',
+      });
+      return;
+    }
+
+    try {
+      setLoading(true);
+      console.log('✏️ Balık güncelleniyor:', editingFishId);
+
+      const fishData = {
+        name: editFishName.trim(),
+        categoryId: editCategoryId,
+        updatedAt: new Date(),
+      };
+
+      console.log('📝 Fish data to update:', fishData);
+
+      const fishDoc = doc(db, 'fishes', editingFishId);
+      await updateDoc(fishDoc, fishData);
+      console.log('✅ Fish updated successfully');
+
+      notice({
+        variant: 'success',
+        title: 'Başarılı',
+        message: 'Balık başarıyla güncellendi',
+        buttonTitle: 'Tamam',
+      });
+
+      setEditingFishId(null);
+      setEditFishName('');
+      setEditCategoryId('');
+      setOpenEditFishDialog(false);
+
+      await loadFishes();
+    } catch (error) {
+      console.error('❌ Fish update error:', error);
+      notice({
+        variant: 'error',
+        title: 'Hata',
+        message: 'Balık güncellenirken hata oluştu',
         buttonTitle: 'Tamam',
       });
     } finally {
@@ -393,12 +528,19 @@ const DashboardPage = () => {
                     <TableCell>{category.name}</TableCell>
                     <TableCell>{category.description || '-'}</TableCell>
                     <TableCell align="right">
-                      <Button
+                      <IconButton
+                        size="small"
+                        color="primary"
+                        onClick={() => handleEditCategory(category)}
+                        sx={{ mr: 1 }}>
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                      <IconButton
                         size="small"
                         color="error"
                         onClick={() => category.id && handleDeleteCategory(category.id)}>
-                        Sil
-                      </Button>
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
                     </TableCell>
                   </TableRow>
                 ))
@@ -446,9 +588,12 @@ const DashboardPage = () => {
                     <TableCell>{fish.name}</TableCell>
                     <TableCell>{fish.categoryName || 'Bilinmiyor'}</TableCell>
                     <TableCell align="right">
-                      <Button size="small" color="error" onClick={() => fish.id && handleDeleteFish(fish.id)}>
-                        Sil
-                      </Button>
+                      <IconButton size="small" color="primary" onClick={() => handleEditFish(fish)} sx={{ mr: 1 }}>
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                      <IconButton size="small" color="error" onClick={() => fish.id && handleDeleteFish(fish.id)}>
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
                     </TableCell>
                   </TableRow>
                 ))
@@ -490,6 +635,38 @@ const DashboardPage = () => {
         </DialogActions>
       </Dialog>
 
+      {/* Edit Category Dialog */}
+      <Dialog open={openEditCategoryDialog} onClose={() => setOpenEditCategoryDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontWeight: 600, color: theme.palette.dark[800] }}>Kategori Güncelle</DialogTitle>
+        <DialogContent sx={{ pt: 3 }}>
+          <TextField
+            autoFocus
+            fullWidth
+            label="Kategori Adı"
+            value={editCategoryName}
+            onChange={(e) => setEditCategoryName(e.target.value)}
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            fullWidth
+            label="Açıklama"
+            multiline
+            rows={3}
+            value={editCategoryDescription}
+            onChange={(e) => setEditCategoryDescription(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setOpenEditCategoryDialog(false)}>İptal</Button>
+          <Button
+            onClick={handleUpdateCategory}
+            variant="contained"
+            sx={{ background: theme.palette.error[700], '&:hover': { background: theme.palette.error[800] } }}>
+            Güncelle
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       {/* Add Fish Dialog */}
       <Dialog open={openFishDialog} onClose={() => setOpenFishDialog(false)} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ fontWeight: 600, color: theme.palette.dark[800] }}>Yeni Balık Ekle</DialogTitle>
@@ -520,6 +697,40 @@ const DashboardPage = () => {
             variant="contained"
             sx={{ background: theme.palette.error[700], '&:hover': { background: theme.palette.error[800] } }}>
             Ekle
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Edit Fish Dialog */}
+      <Dialog open={openEditFishDialog} onClose={() => setOpenEditFishDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontWeight: 600, color: theme.palette.dark[800] }}>Balık Güncelle</DialogTitle>
+        <DialogContent sx={{ pt: 3 }}>
+          <TextField
+            autoFocus
+            fullWidth
+            label="Balık Adı"
+            value={editFishName}
+            onChange={(e) => setEditFishName(e.target.value)}
+            sx={{ mb: 2 }}
+          />
+          <FormControl fullWidth>
+            <InputLabel>Kategori</InputLabel>
+            <Select value={editCategoryId} onChange={(e) => setEditCategoryId(e.target.value)} label="Kategori">
+              {categories.map((cat) => (
+                <MenuItem key={cat.id} value={cat.id}>
+                  {cat.name}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setOpenEditFishDialog(false)}>İptal</Button>
+          <Button
+            onClick={handleUpdateFish}
+            variant="contained"
+            sx={{ background: theme.palette.error[700], '&:hover': { background: theme.palette.error[800] } }}>
+            Güncelle
           </Button>
         </DialogActions>
       </Dialog>
