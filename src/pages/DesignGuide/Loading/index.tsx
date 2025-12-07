@@ -1,6 +1,6 @@
 import { Card, CircularProgress, Divider, LinearProgress, Typography, styled, useTheme } from '@mui/material';
 import DesignGuideHeader from '../_partials/pageHeader';
-import { FigoLoading, SkeletonCardLoader } from '@components';
+import { SkeletonCardLoader } from '@components';
 
 const DesignGuideLoading = () => {
   const theme = useTheme();
@@ -17,7 +17,7 @@ const DesignGuideLoading = () => {
 
   return (
     <Card sx={{ p: 3 }}>
-      <DesignGuideHeader title="Chart" muiLink="https://mui.com/material-ui/react-progress/" hideFigmaLink />
+      <DesignGuideHeader title="Chart" muiLink="https://mui.com/material-ui/react-progress/" />
       <LoadingBox>
         <LoadingTitle>Mui Loading</LoadingTitle>
         <Divider sx={{ marginBlock: 2 }} />
@@ -26,15 +26,13 @@ const DesignGuideLoading = () => {
       </LoadingBox>
 
       <LoadingBox>
-        <DesignGuideHeader title="Skelton" muiLink="https://mui.com/material-ui/react-skeleton//" hideFigmaLink />
+        <DesignGuideHeader title="Skelton" muiLink="https://mui.com/material-ui/react-skeleton//" />
         <SkeletonCardLoader cardCount={1} direction="column" />
       </LoadingBox>
       <LoadingBox>
         <LoadingTitle>Custom Loading</LoadingTitle>
         <Divider sx={{ marginBlock: 2 }} />
-        <LoadingBox sx={{ height: '150px' }}>
-          <FigoLoading />
-        </LoadingBox>
+        <LoadingBox sx={{ height: '150px' }}></LoadingBox>
       </LoadingBox>
     </Card>
   );

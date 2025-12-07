@@ -4,9 +4,9 @@ import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import { MouseEventHandler, useEffect } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { breadcrumbsRedux } from '@store';
-import { useAppSelector, useResponsive, useUser } from '@hooks';
+import { useAppSelector, useResponsive } from '@hooks';
 import { useDispatch } from 'react-redux';
-import { getNavTitle, getUserType } from '@helpers';
+import { getNavTitle } from '@helpers';
 import { getActiveNavItemThroughPath } from '@utils';
 
 const StyledBreadcrumb = styled(BreadcrumbsMui)(({ theme }) => ({
@@ -19,8 +19,6 @@ const StyledBreadcrumb = styled(BreadcrumbsMui)(({ theme }) => ({
 
 const Breadcrumbs = () => {
   const theme = useTheme();
-  const user = useUser();
-  const userType = getUserType(user);
   const dispatch = useDispatch();
   const { pathname } = useLocation();
   const navigate = useNavigate();
@@ -36,7 +34,7 @@ const Breadcrumbs = () => {
   }, [dispatch, pathname]);
 
   const { title: navTitle, icon: activeIcon, path } = activeCrumb || {};
-  const title = getNavTitle(navTitle, userType);
+  const title = getNavTitle(navTitle);
 
   const parentNavConfig = stack.find((navItem) => navItem?.children?.find((childRoute) => childRoute.path === path));
   const icon = activeIcon || parentNavConfig?.icon;
@@ -73,7 +71,7 @@ const Breadcrumbs = () => {
             {stack?.length > 1 &&
               stack.map((bc, index) => {
                 const { breadcrumbTitle: bcTitle } = bc || {};
-                let breadcrumbTitle = getNavTitle(bcTitle, userType);
+                let breadcrumbTitle = getNavTitle(bcTitle);
                 const { path, children } = bc || {};
                 const hasChildren = !!children && children.length > 0;
                 const isLast = stack?.length === index + 1;

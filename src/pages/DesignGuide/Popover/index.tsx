@@ -20,7 +20,7 @@ const DesignGuidePopover = () => {
 
   return (
     <Card sx={{ p: 3 }}>
-      <DesignGuideHeader title="Popover" muiLink="https://mui.com/material-ui/react-popover/" hideFigmaLink />
+      <DesignGuideHeader title="Popover" muiLink="https://mui.com/material-ui/react-popover/" />
       <Box sx={{ borderRight: `1px solid${theme.palette.grey.A300}`, display: 'flex', justifyContent: 'center' }}>
         <Button id="openPopover" onClick={handleOpen} ref={anchorRef} variant="contained">
           Popover Aç

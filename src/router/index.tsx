@@ -1,8 +1,5 @@
 import { NonIndexRouteObject, useNavigate, useRoutes } from 'react-router-dom';
-import { useUser } from '@hooks';
-import { NotAuthorized } from '@pages';
 import { useEffect } from 'react';
-import { checkIfAuthenticatedRoute } from '@utils';
 import { useDispatch } from 'react-redux';
 import { authRedux } from '@store';
 import { getFromParams } from '@helpers';
@@ -17,7 +14,6 @@ export interface IRouteObject extends NonIndexRouteObject {
 }
 
 export default function Router() {
-  const user = useUser();
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const accessToken = getFromParams('accessToken');
@@ -35,7 +31,7 @@ export default function Router() {
       ...route,
       children: route.children?.map((route) => ({
         ...route,
-        element: checkIfAuthenticatedRoute(user, route) ? route.element : <NotAuthorized />,
+        element: route.element,
       })),
     };
   });

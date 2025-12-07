@@ -28,7 +28,7 @@ const DesignGuideTable = () => {
 
   return (
     <Card sx={{ p: 3 }}>
-      <DesignGuideHeader title="Table" muiLink="https://mui.com/material-ui/react-progress/" hideFigmaLink />
+      <DesignGuideHeader title="Table" muiLink="https://mui.com/material-ui/react-progress/" />
       <LoadingBox>
         <Table checkbox={true} rowId="name" headers={header} data={data} id="Table" />
       </LoadingBox>

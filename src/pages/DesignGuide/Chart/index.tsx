@@ -23,7 +23,7 @@ const DesignGuideMobileChart = () => {
 
   return (
     <Card sx={{ p: 3 }}>
-      <DesignGuideHeader title="Chart" hideMuiLink hideFigmaLink>
+      <DesignGuideHeader title="Chart" hideMuiLink>
         Chart için{' '}
         <Link href="https://apexcharts.com/react-chart-demos/" target="_blank">
           apexcharts

@@ -42,7 +42,7 @@ const DialogDetail: FC<NoticeOptions> = ({ variant, title, message, onClick, but
           <Close />
         </Button>
         <Box mb={1}>
-          <img src={getImage()} alt="Figopara Small Logo" width={80} />
+          <img src={getImage()} alt="Bom Akvaryum Small Logo" width={80} />
         </Box>
 
         <Typography

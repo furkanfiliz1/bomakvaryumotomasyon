@@ -115,7 +115,7 @@ export default function Login() {
             }}>
             <img
               src="/assets/logos/logo-dark.svg"
-              alt="Figopara | Logo"
+              alt="Bom Akvaryum | Logo"
               height={32}
               style={{ filter: 'brightness(1.1)' }}
             />

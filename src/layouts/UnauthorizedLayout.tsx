@@ -1,9 +1,7 @@
-import { FigoLoading } from '@components';
 import { useAppSelector, useResponsive } from '@hooks';
 import { Box, styled } from '@mui/material';
 import { useEffect } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
-import Banner from 'src/components/common/Banner';
 
 const RootStyle = styled('div')(({ theme }) => ({
   height: '100%',
@@ -33,8 +31,6 @@ export default function UnauthorizedLayout() {
     if (token) navigate('/home');
   }, [token, navigate]);
 
-  if (token) return <FigoLoading />;
-
   return (
     <RootStyle>
       <Box
@@ -50,8 +46,6 @@ export default function UnauthorizedLayout() {
           display: 'flex',
           flexDirection: 'column',
         }}>
-        <Banner />
-
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
           <ContentStyle>
             <Outlet />

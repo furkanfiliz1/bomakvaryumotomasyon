@@ -19,7 +19,7 @@ const DesignGuideDrawer = () => {
 
   return (
     <Card sx={{ p: 3 }}>
-      <DesignGuideHeader title="Bilgi Penceresi " muiLink="https://mui.com/material-ui/react-drawer/" hideFigmaLink />
+      <DesignGuideHeader title="Bilgi Penceresi " muiLink="https://mui.com/material-ui/react-drawer/" />
       <LoadingBox>
         <Button id="button" onClick={() => handleInfoDrawer()} variant="contained">
           Bilgi Penceresini aç{' '}

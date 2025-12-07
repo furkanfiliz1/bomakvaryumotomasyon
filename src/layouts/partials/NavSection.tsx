@@ -5,10 +5,9 @@ import { Box, Collapse, List, ListItemButton, ListItemIcon, ListItemText, Typogr
 import { styled } from '@mui/material/styles';
 
 import { Icon } from '@components';
-import { getNavTitle, getUserType } from '@helpers';
-import { useUser } from '@hooks';
-import { INavConfig, UserTypes } from '@types';
-import { checkIfAuthenticatedRoute, isActive } from '@utils';
+import { getNavTitle } from '@helpers';
+import { INavConfig } from '@types';
+import { isActive } from '@utils';
 import { IconTypes } from '../../components/common/Icon/types';
 
 interface NavProps {
@@ -89,8 +88,6 @@ const GetGroupName: FC<GroupNameProps> = (props) => {
 const NavItem: FC<NavProps> = (props) => {
   const theme = useTheme();
   const { navItem, open, handleOpen } = props;
-  const user = useUser();
-  const userType = getUserType(user);
 
   const { pathname } = useLocation();
   const isActiveRoot =
@@ -98,9 +95,9 @@ const NavItem: FC<NavProps> = (props) => {
   const navigate = useNavigate();
 
   const { title: navTitle, path = '', icon, children, hidden, Badge, groupTitle, description, className } = navItem;
-  const title = getNavTitle(navTitle, userType);
+  const title = getNavTitle(navTitle);
 
-  const isAuth = checkIfAuthenticatedRoute(user, navItem);
+  const isAuth = true;
 
   if (hidden || !isAuth) return null;
 
@@ -180,8 +177,8 @@ const NavItem: FC<NavProps> = (props) => {
                 description: childDescription,
                 className: childClassName,
               } = navItem;
-              const title = getNavTitle(navTitle, userType);
-              const isAuth = checkIfAuthenticatedRoute(user, navItem);
+              const title = getNavTitle(navTitle);
+              const isAuth = true;
 
               if (hidden || !isAuth || !title) return null;
 
@@ -294,11 +291,8 @@ interface NavSectionProps {
 }
 
 function NavSection({ navConfig, ...other }: NavSectionProps) {
-  const user = useUser();
   const { pathname } = useLocation();
-  const userType = getUserType(user);
-  const isBuyer = userType === UserTypes.BUYER;
-  const [openPathName, setOpenPathName] = useState(isBuyer ? 'buyer' : 'invoices');
+  const [openPathName, setOpenPathName] = useState('invoices');
 
   useEffect(() => {
     if (pathname === '/') return;

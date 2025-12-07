@@ -82,7 +82,7 @@ const RadarInputVerificationCode: FC<RadarInputVerificationCodeProps> = ({ state
       input.addEventListener('paste', (e) => {
         e.preventDefault();
 
-        const text = (e.clipboardData || window.clipboardData).getData('text');
+        const text = e.clipboardData?.getData('text') || '';
         const firstEmpty = getFirstEmptyIndex();
         const start = firstEmpty !== -1 ? Math.min(i, firstEmpty) : i;
 

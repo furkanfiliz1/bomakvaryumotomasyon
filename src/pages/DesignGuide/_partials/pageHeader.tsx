@@ -6,18 +6,10 @@ interface DesignGuideHeaderProps {
   muiLink?: string;
   figmaLink?: string;
   hideMuiLink?: boolean;
-  hideFigmaLink?: boolean;
   children?: ReactNode | ReactNode[];
 }
 
-const DesignGuideHeader: FC<DesignGuideHeaderProps> = ({
-  title,
-  muiLink,
-  figmaLink = 'https://www.figma.com/design/QrgUTe1WYk40yqYeOM3agP/Figopara-Portal-Final-%2F-Design-Kit?node-id=1843-338852&t=jTL3HxWEl3SH9tlb-0',
-  hideMuiLink = false,
-  hideFigmaLink = false,
-  children,
-}) => {
+const DesignGuideHeader: FC<DesignGuideHeaderProps> = ({ title, muiLink, hideMuiLink = false, children }) => {
   return (
     <>
       <Typography variant="h5" color={'black'} fontWeight={500}>
@@ -34,14 +26,6 @@ const DesignGuideHeader: FC<DesignGuideHeaderProps> = ({
               Material Ui Linki
             </Link>{' '}
             <br />
-          </>
-        )}
-        {!hideFigmaLink && (
-          <>
-            Ui kitini incelemek kitini incelemek için -&gt; &nbsp;&nbsp;
-            <Link href={figmaLink} target="_blank">
-              Figma Link
-            </Link>
           </>
         )}
       </Alert>

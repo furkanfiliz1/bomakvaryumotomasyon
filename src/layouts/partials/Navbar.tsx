@@ -2,8 +2,6 @@ import { Breadcrumb, Icon } from '@components';
 import { AppBar, Box, IconButton, Stack, Toolbar } from '@mui/material'; //
 import { styled } from '@mui/material/styles';
 import AccountPopover from './AccountPopover';
-import AnnouncementsPopover from './AnnouncementsPopover';
-import { useResponsive } from '@hooks';
 
 interface NavbarProps {
   onOpenSidebar: () => void;
@@ -36,8 +34,6 @@ const ToolbarStyle = styled(Toolbar)(({ theme }) => ({
 }));
 
 const NavBar: React.FC<NavbarProps> = ({ onOpenSidebar }) => {
-  const smDown = useResponsive('down', 'sm');
-
   return (
     <RootStyle>
       <ToolbarStyle>
@@ -52,8 +48,6 @@ const NavBar: React.FC<NavbarProps> = ({ onOpenSidebar }) => {
         </Box>
         <Box sx={{ flexGrow: 1 }} />
         <Stack direction="row" alignItems="center" spacing={{ xs: 0.5, sm: 1.5 }}>
-          {!smDown && <AnnouncementsPopover />}
-
           <AccountPopover />
         </Stack>
       </ToolbarStyle>

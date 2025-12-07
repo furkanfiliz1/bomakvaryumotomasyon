@@ -1,22 +1,16 @@
-import { LoginUserResponseModel, UserResponseModel } from '@store';
 import { IconTypes } from '../components/common/Icon/types';
-import { UserTypes } from './enums';
 import { FC } from 'react';
 
 export type App = 'RADAR' | 'PORTAL';
 
-interface UserCustomize {
-  EncryptPassword?: string;
-}
-export type User = LoginUserResponseModel & UserResponseModel & UserCustomize;
 
 export type Nullable<T> = {
   [K in keyof T]: Nullable<T[K]> | null;
 };
 
 export interface INavConfig {
-  title: string | ((userType: UserTypes) => string);
-  breadcrumbTitle: string | ((userType: UserTypes) => string);
+  title: string;
+  breadcrumbTitle: string;
   path: string;
   icon?: keyof typeof IconTypes;
   initialPath?: string;

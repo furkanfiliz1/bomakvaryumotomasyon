@@ -5,10 +5,8 @@ import { Divider, IconButton, MenuItem, Stack, Typography, useTheme } from '@mui
 
 import { Icon, MenuPopover } from '@components';
 
-import { getUserType } from '@helpers';
-import { useAppDispatch, useUser, useResponsive } from '@hooks';
+import { useAppDispatch, useResponsive } from '@hooks';
 import { authRedux } from '@store';
-import { UserTypes } from '@types';
 import { IconTypes } from 'src/components/common/Icon/types';
 import AccountPopoverAvatar from './AccountPopoverAvatar';
 
@@ -21,12 +19,10 @@ interface MenuOption {
 }
 
 export default function AccountPopover() {
-  const user = useUser();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const smDown = useResponsive('down', 'sm');
   const theme = useTheme();
-  const isFinancer = getUserType(user) === UserTypes.FINANCER;
 
   const MENU_OPTIONS: MenuOption[] = useMemo(
     () => [
@@ -39,7 +35,6 @@ export default function AccountPopover() {
         label: 'Entegrasyonlar',
         icon: 'intersect-circle',
         linkTo: '/integrations',
-        hidden: isFinancer,
       },
       {
         label: 'Belgeler',
@@ -57,7 +52,7 @@ export default function AccountPopover() {
         linkTo: 'settings',
       },
     ],
-    [isFinancer],
+    [],
   );
 
   const anchorRef = useRef(null);
@@ -79,8 +74,8 @@ export default function AccountPopover() {
     dispatch(authRedux.logout());
   };
 
-  const FirstName = user?.FirstName || '';
-  const LastName = user?.LastName || '';
+  const FirstName = 'bom';
+  const LastName = '';
   const userFullName = `${FirstName} ${LastName}`;
   const avatarText = `${FirstName[0] ?? ''}${LastName[0] ?? ''}`;
 
@@ -89,7 +84,7 @@ export default function AccountPopover() {
       <IconButton ref={anchorRef} onClick={handleOpen} id={'account'} sx={{ ':hover': { background: 'transparent' } }}>
         <AccountPopoverAvatar
           title={userFullName}
-          description={user?.CompanyName || ''}
+          description={''}
           avatarText={avatarText}
           isShow={smDown}
           open={open}
@@ -123,7 +118,7 @@ export default function AccountPopover() {
         <Stack sx={{ p: 2, pb: 1 }}>
           <AccountPopoverAvatar
             title={userFullName}
-            description={user?.Email || ''}
+            description={''}
             avatarText={avatarText}
             isShow={false}
             open={open}

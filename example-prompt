@@ -103,7 +103,6 @@ http://localhost:3001/tanimlamalar/banka-subeleri-ekle
 
 services
 
-https://apitest.figopara.com/banks GET
 
 response
 
@@ -119,7 +118,6 @@ first select a bank
 
 and get thiis 
 
-https://apitest.figopara.com/banks/branch/search?BankId=125&pageSize=999999 GET
 
 
 
@@ -146,7 +144,6 @@ https://apitest.figopara.com/banks/branch/search?BankId=125&pageSize=999999 GET
 
 ----
 
-https://apitest.figopara.com/banks/branches/bulk POST
 
 {
     "overWrite": false,

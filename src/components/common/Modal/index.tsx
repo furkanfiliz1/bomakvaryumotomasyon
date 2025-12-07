@@ -108,7 +108,7 @@ const Modal = (props: PropsWithChildren<ModalProps>, ref: Ref<ModalMethods>) => 
       fullWidth={fullWidth}
       maxWidth={maxWidth}
       onClose={disableBackClick ? undefined : handleClose}
-      aria-labelledby="figopara_base_modal"
+      aria-labelledby="bomakvaryum_base_modal"
       PaperProps={{
         style: {
           height: modalHeight,

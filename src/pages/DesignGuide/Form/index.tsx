@@ -2,7 +2,7 @@ import { Alert, Card, styled, useTheme, Link, Typography } from '@mui/material';
 import DesignGuideHeader from '../_partials/pageHeader';
 import yup from '@validation';
 import { yupResolver } from '@hookform/resolvers/yup';
-import { fields, Form, InvoiceDatePicker, LoadingButton } from '@components';
+import { fields, Form, LoadingButton } from '@components';
 import { FieldValues, useForm } from 'react-hook-form';
 
 const DesignGuideForm = () => {
@@ -98,14 +98,6 @@ const DesignGuideForm = () => {
       </FormCard>
       <FormCard>
         <FormBoxTitle>Custom Date Picker</FormBoxTitle>
-        <InvoiceDatePicker
-          onChange={(value, isAllSelected) => {
-            console.log('value', value);
-            console.log('isAllSelected', isAllSelected);
-          }}
-          value=""
-          error={false}
-        />
       </FormCard>
     </Card>
   );

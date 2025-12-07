@@ -66,7 +66,7 @@ const DesignGuideModal = () => {
 
   return (
     <Card sx={{ p: 3 }}>
-      <DesignGuideHeader hideFigmaLink title="Button" muiLink="https://mui.com/material-ui/react-modal/" />
+      <DesignGuideHeader title="Button" muiLink="https://mui.com/material-ui/react-modal/" />
       <ButtonCard>
         <ButtonCardTitle>Basic Modal</ButtonCardTitle>
         <Box>
@@ -108,7 +108,7 @@ const DesignGuideModal = () => {
         </Box>
       </ButtonCard>
       <ButtonCard>
-        <DesignGuideHeader hideFigmaLink title="Snackbar" muiLink="https://mui.com/material-ui/react-snackbar/" />
+        <DesignGuideHeader title="Snackbar" muiLink="https://mui.com/material-ui/react-snackbar/" />
         <Box sx={{ display: 'flex', gap: 1 }}>
           <Button variant="contained" color="success" onClick={() => openSnackbar('success')} id="">
             Başarılı{' '}

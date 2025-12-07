@@ -1,1 +1,0 @@
-export { BankBuyerRatesPage } from './BankBuyerRatesPage';

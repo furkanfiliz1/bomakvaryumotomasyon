@@ -25,7 +25,7 @@ const DesignGuideFileUpload = () => {
 
   return (
     <Card sx={{ p: 3 }}>
-      <DesignGuideHeader title="Chart" hideMuiLink hideFigmaLink>
+      <DesignGuideHeader title="Chart" hideMuiLink>
         Dosya yükleme custom olarak yazıldı. Sürükle bırak ile dosya yükleyebilirsiniz.
       </DesignGuideHeader>
       <FileUploadBox sx={{ marginBlock: 2 }}>

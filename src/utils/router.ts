@@ -1,4 +1,3 @@
-import { User } from '@types';
 import { cloneDeep } from 'lodash';
 import { matchPath } from 'react-router-dom';
 
@@ -38,10 +37,4 @@ export const isActive = (path: string, pathname: string) => {
     return path ? !!matchPath({ path }, pathname) : false;
   }
   return path ? !!matchPath({ path, end: false }, pathname) : false;
-};
-
-export const checkIfAuthenticatedRoute = (_: User | undefined, constraints: { hidden?: boolean }) => {
-  const { hidden } = constraints;
-
-  return !hidden;
 };

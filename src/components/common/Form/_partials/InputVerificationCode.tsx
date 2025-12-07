@@ -70,7 +70,7 @@ const InputVerificationCode: FC<InputVerificationCodeProps> = ({ color, onChange
       input.addEventListener('paste', (e) => {
         e.preventDefault();
 
-        const text = (e.clipboardData || window.clipboardData).getData('text');
+        const text = (e as ClipboardEvent).clipboardData?.getData('text') || '';
         const firstEmpty = getFirstEmptyIndex();
         const start = firstEmpty !== -1 ? Math.min(i, firstEmpty) : i;
 

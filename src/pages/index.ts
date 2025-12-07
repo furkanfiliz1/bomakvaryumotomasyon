@@ -1,15 +1,6 @@
 export { default as Login } from './Authentication/Login';
 export { default as Logout } from './Authentication/Logout';
-export { default as TwoFactorAuthentication } from './Authentication/TwoFactorAuthentication';
-export { default as CompaniesPage } from './Companies/CompaniesPage';
 export { default as DashboardPage } from './Dashboard/DashboardPage';
 export { default as DesignGuide } from './DesignGuide';
-export { default as DiscountOperationsPage } from './DiscountOperations/DiscountOperationsPage';
-export { default as DiscountListPage } from './DiscountOperations/components/DiscountListPage';
-export { default as Documents } from './Documents';
-export { default as OtherDocuments } from './Documents/OtherDocuments';
-export { default as RequiredDocuments } from './Documents/RequiredDocuments';
-export { default as FigoskorOperationsPage } from './FigoskorOperations/FigoskorOperationsPage';
-export { default as DevTools } from './_dev-tools';
 export { default as NotAuthorized } from './common/NotAuthorized';
 export { default as NotFound } from './common/NotFound';

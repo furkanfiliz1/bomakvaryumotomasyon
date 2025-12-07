@@ -22,7 +22,6 @@ export default defineConfig(({ mode }) => {
     ],
     define: {
       'process.env.REACT_APP_ENV_NAME': JSON.stringify(env.REACT_APP_ENV_NAME),
-      'process.env.REACT_APP_ROOT_URL': JSON.stringify(env.REACT_APP_ROOT_URL),
       'process.env.REACT_APP_SCORE_ROOT_URL': JSON.stringify(env.REACT_APP_SCORE_ROOT_URL),
       'process.env.REACT_APP_INVOICE_OPERATION_ROOT_URL': JSON.stringify(env.REACT_APP_INVOICE_OPERATION_ROOT_URL),
       'process.env.REACT_APP_ANALYSIS_ROOT_URL': JSON.stringify(env.REACT_APP_ANALYSIS_ROOT_URL),

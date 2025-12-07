@@ -33,7 +33,6 @@
       "@types": ["./src/types"],
       "@constant": ["./src/constant"],
       "@helpers": ["./src/helpers"],
-      "@sockets": ["./src/sockets"],
       "@validation": ["./src/validation"],
       "@push-event": ["./src/push-event"]
     }
