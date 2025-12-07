@@ -7,6 +7,11 @@ import { IRouteObject } from '.';
 import devOnlyRouter from './dev-only-router';
 
 import { dashboardRouter } from 'src/pages/Dashboard/dashboard.routes';
+import { fishRouter } from 'src/pages/Dashboard/Fish/fish.routes';
+import { customersRouter } from 'src/pages/Customers/customers.routes';
+import { salesRouter } from 'src/pages/Sales/sales.routes';
+import { purchasesRouter } from 'src/pages/Purchases/purchases.routes';
+import { expensesRouter } from 'src/pages/Expenses/expenses.routes';
 
 const routes: IRouteObject[] = [
   {
@@ -20,6 +25,31 @@ const routes: IRouteObject[] = [
        * Gösterge Paneli
        */
       ...dashboardRouter,
+
+      /**
+        Balıklar
+       */
+      ...fishRouter,
+
+      /**
+        Müşteriler
+       */
+      ...customersRouter,
+
+      /**
+        Satışlar
+       */
+      ...salesRouter,
+
+      /**
+        Alışlar
+       */
+      ...purchasesRouter,
+
+      /**
+        Giderler
+       */
+      ...expensesRouter,
 
       {
         path: '404',

@@ -1,739 +1,525 @@
 import {
   Box,
-  Button,
-  TextField,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Paper,
   Typography,
   useTheme,
-  Select,
+  CircularProgress,
+  Grid,
+  Card,
+  CardContent,
   MenuItem,
+  Select,
   FormControl,
   InputLabel,
-  CircularProgress,
-  IconButton,
 } from '@mui/material';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
 import { useState, useEffect } from 'react';
 import { useNotice } from '@components';
-import { db } from '../../config/firebase';
-import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc } from 'firebase/firestore';
-
-interface FishCategory {
-  id?: string;
-  name: string;
-  description?: string;
-  createdAt?: Date;
-}
-
-interface Fish {
-  id?: string;
-  name: string;
-  categoryId: string;
-  categoryName?: string;
-  createdAt?: Date;
-}
+import { salesService } from '../../services/salesService';
+import { purchaseService } from '../../services/purchaseService';
+import { fishService } from '../../services/fishService';
+import { Sale } from '../../types/sale';
+import { Purchase } from '../../types/purchase';
+import { Fish } from '../../types/fish';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import TrendingDownIcon from '@mui/icons-material/TrendingDown';
+import InventoryIcon from '@mui/icons-material/Inventory';
+import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
+import WarningIcon from '@mui/icons-material/Warning';
 
 const DashboardPage = () => {
   const theme = useTheme();
   const notice = useNotice();
 
-  const [categories, setCategories] = useState<FishCategory[]>([]);
-  const [fishes, setFishes] = useState<Fish[]>([]);
   const [loading, setLoading] = useState(false);
+  const [sales, setSales] = useState<Sale[]>([]);
+  const [purchases, setPurchases] = useState<Purchase[]>([]);
+  const [fishes, setFishes] = useState<Fish[]>([]);
 
-  // Category Dialog
-  const [openCategoryDialog, setOpenCategoryDialog] = useState(false);
-  const [categoryName, setCategoryName] = useState('');
-  const [categoryDescription, setCategoryDescription] = useState('');
+  // Tarih filtreleri - Başlangıçta null (Tümü)
+  const [selectedYear, setSelectedYear] = useState<number | null>(null);
+  const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
 
-  // Edit Category Dialog
-  const [openEditCategoryDialog, setOpenEditCategoryDialog] = useState(false);
-  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
-  const [editCategoryName, setEditCategoryName] = useState('');
-  const [editCategoryDescription, setEditCategoryDescription] = useState('');
+  const months = [
+    { value: 0, label: 'Tümü' },
+    { value: 1, label: 'Ocak' },
+    { value: 2, label: 'Şubat' },
+    { value: 3, label: 'Mart' },
+    { value: 4, label: 'Nisan' },
+    { value: 5, label: 'Mayıs' },
+    { value: 6, label: 'Haziran' },
+    { value: 7, label: 'Temmuz' },
+    { value: 8, label: 'Ağustos' },
+    { value: 9, label: 'Eylül' },
+    { value: 10, label: 'Ekim' },
+    { value: 11, label: 'Kasım' },
+    { value: 12, label: 'Aralık' },
+  ];
 
-  // Fish Dialog
-  const [openFishDialog, setOpenFishDialog] = useState(false);
-  const [fishName, setFishName] = useState('');
-  const [selectedCategoryId, setSelectedCategoryId] = useState('');
+  const years = [
+    { value: 0, label: 'Tümü' },
+    { value: 2023, label: '2023' },
+    { value: 2024, label: '2024' },
+    { value: 2025, label: '2025' },
+    { value: 2026, label: '2026' },
+  ];
 
-  // Edit Fish Dialog
-  const [openEditFishDialog, setOpenEditFishDialog] = useState(false);
-  const [editingFishId, setEditingFishId] = useState<string | null>(null);
-  const [editFishName, setEditFishName] = useState('');
-  const [editCategoryId, setEditCategoryId] = useState('');
-
-  const loadCategories = async () => {
-    console.log('🔄 Kategoriler yükleniyor...');
+  const loadData = async () => {
     setLoading(true);
-
     try {
-      console.log('📍 Firestore collection: fishCategories');
-
-      const categoriesCollection = collection(db, 'fishCategories');
-      const snapshot = await getDocs(categoriesCollection);
-
-      console.log('📦 Firestore snapshot:', {
-        empty: snapshot.empty,
-        size: snapshot.size,
-      });
-
-      const categoriesArray: FishCategory[] = [];
-
-      snapshot.forEach((doc) => {
-        const data = doc.data();
-        console.log(`📝 Processing category [${doc.id}]:`, data);
-
-        const category: FishCategory = {
-          id: doc.id,
-          name: data.name || '',
-          description: data.description || '',
-          createdAt: data.createdAt?.toDate() || new Date(),
-        };
-
-        console.log('✅ Category processed:', category);
-        categoriesArray.push(category);
-      });
-
-      console.log('🎯 Final categories array:', categoriesArray);
-      console.log('🔢 Categories count:', categoriesArray.length);
-
-      setCategories(categoriesArray);
-      console.log('✅ setCategories called with:', categoriesArray);
+      const [salesData, purchasesData, fishesData] = await Promise.all([
+        salesService.getAllSales(),
+        purchaseService.getAllPurchases(),
+        fishService.getAllFishes(),
+      ]);
+      setSales(salesData);
+      setPurchases(purchasesData);
+      setFishes(fishesData);
     } catch (error) {
-      console.error('❌ Categories loading error:', error);
+      console.error('Dashboard verileri yüklenirken hata:', error);
       notice({
         variant: 'error',
         title: 'Hata',
-        message: 'Kategoriler yüklenirken hata oluştu',
+        message: 'Dashboard verileri yüklenirken hata oluştu',
         buttonTitle: 'Tamam',
       });
-      setCategories([]);
     } finally {
       setLoading(false);
-      console.log('🏁 Categories loading finished');
-    }
-  };
-  const loadFishes = async () => {
-    console.log('🐟 Balıklar yükleniyor...');
-    setLoading(true);
-
-    try {
-      console.log('🎣 Firestore collection: fishes');
-
-      const fishesCollection = collection(db, 'fishes');
-      const snapshot = await getDocs(fishesCollection);
-
-      console.log('🐠 Firestore snapshot:', {
-        empty: snapshot.empty,
-        size: snapshot.size,
-      });
-
-      const fishesArray: Fish[] = [];
-
-      snapshot.forEach((doc) => {
-        const data = doc.data();
-        console.log(`🐟 Processing fish [${doc.id}]:`, data);
-
-        // Kategori adını bul
-        const category = categories.find((c) => c.id === data.categoryId);
-
-        const fish: Fish = {
-          id: doc.id,
-          name: data.name || '',
-          categoryId: data.categoryId || '',
-          categoryName: category?.name || 'Bilinmiyor',
-          createdAt: data.createdAt?.toDate() || new Date(),
-        };
-
-        console.log('✅ Fish processed:', fish);
-        fishesArray.push(fish);
-      });
-      console.log('🎯 Final fishes array:', fishesArray);
-      console.log('🔢 Fishes count:', fishesArray.length);
-
-      setFishes(fishesArray);
-      console.log('✅ setFishes called with:', fishesArray);
-    } catch (error) {
-      console.error('❌ Fishes loading error:', error);
-      notice({
-        variant: 'error',
-        title: 'Hata',
-        message: 'Balıklar yüklenirken hata oluştu',
-        buttonTitle: 'Tamam',
-      });
-      setFishes([]);
-    } finally {
-      setLoading(false);
-      console.log('🏁 Fishes loading finished');
     }
   };
 
-  // Load categories and fishes on mount
   useEffect(() => {
-    console.log('🚀 Dashboard component mounting...');
-    loadCategories();
+    loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Load fishes after categories are loaded
   useEffect(() => {
-    if (categories.length > 0) {
-      console.log('📊 Categories loaded, now loading fishes...');
-      loadFishes();
-    }
+    loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [categories.length]);
+  }, []);
 
-  const handleAddCategory = async () => {
-    if (!categoryName.trim()) {
-      notice({
-        variant: 'error',
-        title: 'Hata',
-        message: 'Kategori adı boş olamaz',
-        buttonTitle: 'Tamam',
+  // Hesaplamalar
+  // Seçilen aya göre filtrele (null veya 0 ise tümünü göster)
+  const filteredSales =
+    selectedMonth === null || selectedMonth === 0 || selectedYear === null || selectedYear === 0
+      ? sales
+      : sales.filter((sale) => {
+          const saleDate = sale.date?.toDate?.();
+          return saleDate && saleDate.getMonth() + 1 === selectedMonth && saleDate.getFullYear() === selectedYear;
+        });
+
+  const filteredPurchases =
+    selectedMonth === null || selectedMonth === 0 || selectedYear === null || selectedYear === 0
+      ? purchases
+      : purchases.filter((purchase) => {
+          const purchaseDate = purchase.date?.toDate?.();
+          return (
+            purchaseDate && purchaseDate.getMonth() + 1 === selectedMonth && purchaseDate.getFullYear() === selectedYear
+          );
+        });
+
+  // Yıllık veriler (null veya 0 ise tümünü göster)
+  const yearSales =
+    selectedYear === null || selectedYear === 0
+      ? sales
+      : sales.filter((sale) => {
+          const saleDate = sale.date?.toDate?.();
+          return saleDate && saleDate.getFullYear() === selectedYear;
+        });
+
+  const yearPurchases =
+    selectedYear === null || selectedYear === 0
+      ? purchases
+      : purchases.filter((purchase) => {
+          const purchaseDate = purchase.date?.toDate?.();
+          return purchaseDate && purchaseDate.getFullYear() === selectedYear;
+        });
+
+  // Aylık toplam satış
+  const monthSalesRevenue = filteredSales.reduce((sum, sale) => sum + (sale.total || 0), 0);
+
+  // Aylık toplam alış maliyeti
+  const monthPurchaseCost = filteredPurchases.reduce((sum, purchase) => sum + (purchase.totalCostWithShipping || 0), 0);
+
+  // Aylık kar/zarar
+  const monthProfitLoss = monthSalesRevenue - monthPurchaseCost;
+
+  // Yıllık toplam satış
+  const yearSalesRevenue = yearSales.reduce((sum, sale) => sum + (sale.total || 0), 0);
+
+  // Yıllık toplam alış maliyeti
+  const yearPurchaseCost = yearPurchases.reduce((sum, purchase) => sum + (purchase.totalCostWithShipping || 0), 0);
+
+  // Yıllık kar/zarar
+  const yearProfitLoss = yearSalesRevenue - yearPurchaseCost;
+
+  // Toplam stok değeri
+  const totalStockValue = fishes.reduce((sum, fish) => sum + (fish.stock || 0) * (fish.unitPrice || 0), 0);
+
+  // Toplam stok adedi
+  const totalStockCount = fishes.reduce((sum, fish) => sum + (fish.stock || 0), 0);
+
+  // Düşük stok uyarısı
+  const lowStockFishes = fishes.filter((fish) => (fish.stock || 0) < 10);
+
+  // En çok satan balıklar (Aylık)
+  const fishSalesMap = new Map<string, { name: string; quantity: number; revenue: number }>();
+  filteredSales.forEach((sale) => {
+    sale.items?.forEach((item) => {
+      const existing = fishSalesMap.get(item.fishId) || { name: '', quantity: 0, revenue: 0 };
+      const fish = fishes.find((f) => f.id === item.fishId);
+      fishSalesMap.set(item.fishId, {
+        name: fish?.name || item.fishName || 'Bilinmeyen',
+        quantity: existing.quantity + item.soldQuantity,
+        revenue: existing.revenue + item.total,
       });
-      return;
-    }
+    });
+  });
 
-    try {
-      setLoading(true);
-      console.log('➕ Kategori ekleniyor:', categoryName.trim());
+  const topSellingFishes = Array.from(fishSalesMap.values())
+    .sort((a, b) => b.quantity - a.quantity)
+    .slice(0, 5);
 
-      const categoryData = {
-        name: categoryName.trim(),
-        description: categoryDescription.trim() || '',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
 
-      console.log('📝 Category data to save:', categoryData);
-
-      const categoriesCollection = collection(db, 'fishCategories');
-      const docRef = await addDoc(categoriesCollection, categoryData);
-      console.log('🆔 New category ID:', docRef.id);
-      console.log('✅ Category saved successfully');
-
-      notice({
-        variant: 'success',
-        title: 'Başarılı',
-        message: 'Kategori başarıyla eklendi',
-        buttonTitle: 'Tamam',
-      });
-
-      setCategoryName('');
-      setCategoryDescription('');
-      setOpenCategoryDialog(false);
-
-      await loadCategories();
-    } catch (error) {
-      console.error('❌ Category add error:', error);
-      notice({
-        variant: 'error',
-        title: 'Hata',
-        message: 'Kategori eklenirken hata oluştu',
-        buttonTitle: 'Tamam',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAddFish = async () => {
-    if (!fishName.trim() || !selectedCategoryId) {
-      notice({
-        variant: 'error',
-        title: 'Hata',
-        message: 'Balık adı ve kategori seçimi zorunludur',
-        buttonTitle: 'Tamam',
-      });
-      return;
-    }
-
-    try {
-      setLoading(true);
-      console.log('🐟 Balık ekleniyor:', fishName.trim());
-
-      const fishData = {
-        name: fishName.trim(),
-        categoryId: selectedCategoryId,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      console.log('🐠 Fish data to save:', fishData);
-
-      const fishesCollection = collection(db, 'fishes');
-      const docRef = await addDoc(fishesCollection, fishData);
-      console.log('🆔 New fish ID:', docRef.id);
-      console.log('✅ Fish saved successfully');
-
-      notice({
-        variant: 'success',
-        title: 'Başarılı',
-        message: 'Balık başarıyla eklendi',
-        buttonTitle: 'Tamam',
-      });
-
-      setFishName('');
-      setSelectedCategoryId('');
-      setOpenFishDialog(false);
-
-      await loadFishes();
-    } catch (error) {
-      console.error('❌ Fish add error:', error);
-      notice({
-        variant: 'error',
-        title: 'Hata',
-        message: 'Balık eklenirken hata oluştu',
-        buttonTitle: 'Tamam',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDeleteCategory = async (id: string) => {
-    try {
-      setLoading(true);
-      console.log('❌ Kategori siliniyor:', id);
-
-      const categoryDoc = doc(db, 'fishCategories', id);
-      await deleteDoc(categoryDoc);
-      console.log('✅ Category deleted successfully');
-
-      notice({
-        variant: 'success',
-        title: 'Başarılı',
-        message: 'Kategori silindi',
-        buttonTitle: 'Tamam',
-      });
-
-      await loadCategories();
-    } catch (error) {
-      console.error('❌ Category delete error:', error);
-      notice({
-        variant: 'error',
-        title: 'Hata',
-        message: 'Kategori silinirken hata oluştu',
-        buttonTitle: 'Tamam',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleEditCategory = (category: FishCategory) => {
-    setEditingCategoryId(category.id || null);
-    setEditCategoryName(category.name);
-    setEditCategoryDescription(category.description || '');
-    setOpenEditCategoryDialog(true);
-  };
-
-  const handleUpdateCategory = async () => {
-    if (!editCategoryName.trim() || !editingCategoryId) {
-      notice({
-        variant: 'error',
-        title: 'Hata',
-        message: 'Kategori adı zorunludur',
-        buttonTitle: 'Tamam',
-      });
-      return;
-    }
-
-    try {
-      setLoading(true);
-      console.log('✏️ Kategori güncelleniyor:', editingCategoryId);
-
-      const categoryData = {
-        name: editCategoryName.trim(),
-        description: editCategoryDescription.trim() || '',
-        updatedAt: new Date(),
-      };
-
-      console.log('📝 Category data to update:', categoryData);
-
-      const categoryDoc = doc(db, 'fishCategories', editingCategoryId);
-      await updateDoc(categoryDoc, categoryData);
-      console.log('✅ Category updated successfully');
-
-      notice({
-        variant: 'success',
-        title: 'Başarılı',
-        message: 'Kategori başarıyla güncellendi',
-        buttonTitle: 'Tamam',
-      });
-
-      setEditingCategoryId(null);
-      setEditCategoryName('');
-      setEditCategoryDescription('');
-      setOpenEditCategoryDialog(false);
-
-      await loadCategories();
-    } catch (error) {
-      console.error('❌ Category update error:', error);
-      notice({
-        variant: 'error',
-        title: 'Hata',
-        message: 'Kategori güncellenirken hata oluştu',
-        buttonTitle: 'Tamam',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-  const handleDeleteFish = async (id: string) => {
-    try {
-      setLoading(true);
-      console.log('❌ Balık siliniyor:', id);
-
-      const fishDoc = doc(db, 'fishes', id);
-      await deleteDoc(fishDoc);
-      console.log('✅ Fish deleted successfully');
-
-      notice({
-        variant: 'success',
-        title: 'Başarılı',
-        message: 'Balık silindi',
-        buttonTitle: 'Tamam',
-      });
-
-      await loadFishes();
-    } catch (error) {
-      console.error('❌ Fish delete error:', error);
-      notice({
-        variant: 'error',
-        title: 'Hata',
-        message: 'Balık silinirken hata oluştu',
-        buttonTitle: 'Tamam',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleEditFish = (fish: Fish) => {
-    setEditingFishId(fish.id || null);
-    setEditFishName(fish.name);
-    setEditCategoryId(fish.categoryId);
-    setOpenEditFishDialog(true);
-  };
-
-  const handleUpdateFish = async () => {
-    if (!editFishName.trim() || !editCategoryId || !editingFishId) {
-      notice({
-        variant: 'error',
-        title: 'Hata',
-        message: 'Balık adı ve kategori seçimi zorunludur',
-        buttonTitle: 'Tamam',
-      });
-      return;
-    }
-
-    try {
-      setLoading(true);
-      console.log('✏️ Balık güncelleniyor:', editingFishId);
-
-      const fishData = {
-        name: editFishName.trim(),
-        categoryId: editCategoryId,
-        updatedAt: new Date(),
-      };
-
-      console.log('📝 Fish data to update:', fishData);
-
-      const fishDoc = doc(db, 'fishes', editingFishId);
-      await updateDoc(fishDoc, fishData);
-      console.log('✅ Fish updated successfully');
-
-      notice({
-        variant: 'success',
-        title: 'Başarılı',
-        message: 'Balık başarıyla güncellendi',
-        buttonTitle: 'Tamam',
-      });
-
-      setEditingFishId(null);
-      setEditFishName('');
-      setEditCategoryId('');
-      setOpenEditFishDialog(false);
-
-      await loadFishes();
-    } catch (error) {
-      console.error('❌ Fish update error:', error);
-      notice({
-        variant: 'error',
-        title: 'Hata',
-        message: 'Balık güncellenirken hata oluştu',
-        buttonTitle: 'Tamam',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
   return (
     <Box sx={{ p: 3 }}>
-      {loading && (
-        <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
-          <CircularProgress />
-        </Box>
-      )}
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Typography variant="h4" sx={{ fontWeight: 600, color: theme.palette.dark[800] }}>
+          Dashboard
+        </Typography>
 
-      {/* Categories Section */}
-      <Box sx={{ mb: 4 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Typography variant="h4" sx={{ fontWeight: 600, color: theme.palette.dark[800] }}>
-            Balık Kategorileri
-          </Typography>
-          <Button
-            variant="contained"
-            onClick={() => setOpenCategoryDialog(true)}
-            sx={{ background: theme.palette.error[700], '&:hover': { background: theme.palette.error[800] } }}>
-            Yeni Kategori Ekle
-          </Button>
-        </Box>
-
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead sx={{ backgroundColor: theme.palette.grey[100] }}>
-              <TableRow>
-                <TableCell sx={{ fontWeight: 600 }}>Kategori Adı</TableCell>
-                <TableCell sx={{ fontWeight: 600 }}>Açıklama</TableCell>
-                <TableCell sx={{ fontWeight: 600 }} align="right">
-                  İşlemler
-                </TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {categories.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={3} sx={{ textAlign: 'center', py: 3 }}>
-                    <Typography color={theme.palette.grey[600]}>Henüz kategori eklenmemiştir</Typography>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                categories.map((category) => (
-                  <TableRow key={category.id}>
-                    <TableCell>{category.name}</TableCell>
-                    <TableCell>{category.description || '-'}</TableCell>
-                    <TableCell align="right">
-                      <IconButton
-                        size="small"
-                        color="primary"
-                        onClick={() => handleEditCategory(category)}
-                        sx={{ mr: 1 }}>
-                        <EditIcon fontSize="small" />
-                      </IconButton>
-                      <IconButton
-                        size="small"
-                        color="error"
-                        onClick={() => category.id && handleDeleteCategory(category.id)}>
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </Box>
-
-      {/* Fishes Section */}
-      <Box>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Typography variant="h4" sx={{ fontWeight: 600, color: theme.palette.dark[800] }}>
-            Balıklar
-          </Typography>
-          <Button
-            variant="contained"
-            onClick={() => setOpenFishDialog(true)}
-            sx={{ background: theme.palette.error[700], '&:hover': { background: theme.palette.error[800] } }}>
-            Yeni Balık Ekle
-          </Button>
-        </Box>
-
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead sx={{ backgroundColor: theme.palette.grey[100] }}>
-              <TableRow>
-                <TableCell sx={{ fontWeight: 600 }}>Balık Adı</TableCell>
-                <TableCell sx={{ fontWeight: 600 }}>Kategori</TableCell>
-                <TableCell sx={{ fontWeight: 600 }} align="right">
-                  İşlemler
-                </TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {fishes.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={3} sx={{ textAlign: 'center', py: 3 }}>
-                    <Typography color={theme.palette.grey[600]}>Henüz balık eklenmemiştir</Typography>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                fishes.map((fish) => (
-                  <TableRow key={fish.id}>
-                    <TableCell>{fish.name}</TableCell>
-                    <TableCell>{fish.categoryName || 'Bilinmiyor'}</TableCell>
-                    <TableCell align="right">
-                      <IconButton size="small" color="primary" onClick={() => handleEditFish(fish)} sx={{ mr: 1 }}>
-                        <EditIcon fontSize="small" />
-                      </IconButton>
-                      <IconButton size="small" color="error" onClick={() => fish.id && handleDeleteFish(fish.id)}>
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </Box>
-
-      {/* Add Category Dialog */}
-      <Dialog open={openCategoryDialog} onClose={() => setOpenCategoryDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ fontWeight: 600, color: theme.palette.dark[800] }}>Yeni Balık Kategorisi</DialogTitle>
-        <DialogContent sx={{ pt: 3 }}>
-          <TextField
-            autoFocus
-            fullWidth
-            label="Kategori Adı"
-            value={categoryName}
-            onChange={(e) => setCategoryName(e.target.value)}
-            sx={{ mb: 2 }}
-          />
-          <TextField
-            fullWidth
-            label="Açıklama"
-            multiline
-            rows={3}
-            value={categoryDescription}
-            onChange={(e) => setCategoryDescription(e.target.value)}
-          />
-        </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
-          <Button onClick={() => setOpenCategoryDialog(false)}>İptal</Button>
-          <Button
-            onClick={handleAddCategory}
-            variant="contained"
-            sx={{ background: theme.palette.error[700], '&:hover': { background: theme.palette.error[800] } }}>
-            Ekle
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Edit Category Dialog */}
-      <Dialog open={openEditCategoryDialog} onClose={() => setOpenEditCategoryDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ fontWeight: 600, color: theme.palette.dark[800] }}>Kategori Güncelle</DialogTitle>
-        <DialogContent sx={{ pt: 3 }}>
-          <TextField
-            autoFocus
-            fullWidth
-            label="Kategori Adı"
-            value={editCategoryName}
-            onChange={(e) => setEditCategoryName(e.target.value)}
-            sx={{ mb: 2 }}
-          />
-          <TextField
-            fullWidth
-            label="Açıklama"
-            multiline
-            rows={3}
-            value={editCategoryDescription}
-            onChange={(e) => setEditCategoryDescription(e.target.value)}
-          />
-        </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
-          <Button onClick={() => setOpenEditCategoryDialog(false)}>İptal</Button>
-          <Button
-            onClick={handleUpdateCategory}
-            variant="contained"
-            sx={{ background: theme.palette.error[700], '&:hover': { background: theme.palette.error[800] } }}>
-            Güncelle
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Add Fish Dialog */}
-      <Dialog open={openFishDialog} onClose={() => setOpenFishDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ fontWeight: 600, color: theme.palette.dark[800] }}>Yeni Balık Ekle</DialogTitle>
-        <DialogContent sx={{ pt: 3 }}>
-          <TextField
-            autoFocus
-            fullWidth
-            label="Balık Adı"
-            value={fishName}
-            onChange={(e) => setFishName(e.target.value)}
-            sx={{ mb: 2 }}
-          />
-          <FormControl fullWidth>
-            <InputLabel>Kategori</InputLabel>
-            <Select value={selectedCategoryId} onChange={(e) => setSelectedCategoryId(e.target.value)} label="Kategori">
-              {categories.map((cat) => (
-                <MenuItem key={cat.id} value={cat.id}>
-                  {cat.name}
+        {/* Tarih Filtreleri */}
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <FormControl size="small" sx={{ minWidth: 120 }}>
+            <InputLabel>Yıl</InputLabel>
+            <Select
+              value={selectedYear ?? 0}
+              label="Yıl"
+              onChange={(e) => setSelectedYear(e.target.value === 0 ? null : Number(e.target.value))}>
+              {years.map((year) => (
+                <MenuItem key={year.value} value={year.value}>
+                  {year.label}
                 </MenuItem>
               ))}
             </Select>
           </FormControl>
-        </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
-          <Button onClick={() => setOpenFishDialog(false)}>İptal</Button>
-          <Button
-            onClick={handleAddFish}
-            variant="contained"
-            sx={{ background: theme.palette.error[700], '&:hover': { background: theme.palette.error[800] } }}>
-            Ekle
-          </Button>
-        </DialogActions>
-      </Dialog>
 
-      {/* Edit Fish Dialog */}
-      <Dialog open={openEditFishDialog} onClose={() => setOpenEditFishDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ fontWeight: 600, color: theme.palette.dark[800] }}>Balık Güncelle</DialogTitle>
-        <DialogContent sx={{ pt: 3 }}>
-          <TextField
-            autoFocus
-            fullWidth
-            label="Balık Adı"
-            value={editFishName}
-            onChange={(e) => setEditFishName(e.target.value)}
-            sx={{ mb: 2 }}
-          />
-          <FormControl fullWidth>
-            <InputLabel>Kategori</InputLabel>
-            <Select value={editCategoryId} onChange={(e) => setEditCategoryId(e.target.value)} label="Kategori">
-              {categories.map((cat) => (
-                <MenuItem key={cat.id} value={cat.id}>
-                  {cat.name}
+          <FormControl size="small" sx={{ minWidth: 120 }}>
+            <InputLabel>Ay</InputLabel>
+            <Select
+              value={selectedMonth ?? 0}
+              label="Ay"
+              onChange={(e) => setSelectedMonth(e.target.value === 0 ? null : Number(e.target.value))}>
+              {months.map((month) => (
+                <MenuItem key={month.value} value={month.value}>
+                  {month.label}
                 </MenuItem>
               ))}
             </Select>
           </FormControl>
-        </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
-          <Button onClick={() => setOpenEditFishDialog(false)}>İptal</Button>
-          <Button
-            onClick={handleUpdateFish}
-            variant="contained"
-            sx={{ background: theme.palette.error[700], '&:hover': { background: theme.palette.error[800] } }}>
-            Güncelle
-          </Button>
-        </DialogActions>
-      </Dialog>
+        </Box>
+      </Box>
+
+      {/* Aylık Özet Kartlar */}
+      <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+        {selectedMonth === null || selectedMonth === 0
+          ? 'Genel Özet'
+          : `${months.find((m) => m.value === selectedMonth)?.label} ${selectedYear || ''} - Aylık Özet`}
+      </Typography>
+      <Grid container spacing={3} sx={{ mb: 4 }}>
+        {/* Aylık Satış */}
+        <Grid item xs={12} md={3}>
+          <Card sx={{ height: '100%' }}>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                <TrendingUpIcon sx={{ mr: 1, color: 'success.main' }} />
+                <Typography variant="h6">Satış</Typography>
+              </Box>
+              <Typography variant="h4" sx={{ fontWeight: 700, color: 'success.main' }}>
+                ₺{monthSalesRevenue.toFixed(2)}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                {filteredSales.length} işlem
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Aylık Alış */}
+        <Grid item xs={12} md={3}>
+          <Card sx={{ height: '100%' }}>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                <TrendingDownIcon sx={{ mr: 1, color: 'error.main' }} />
+                <Typography variant="h6">Alış</Typography>
+              </Box>
+              <Typography variant="h4" sx={{ fontWeight: 700, color: 'error.main' }}>
+                ₺{monthPurchaseCost.toFixed(2)}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                {filteredPurchases.length} işlem
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Aylık Kar/Zarar */}
+        <Grid item xs={12} md={3}>
+          <Card sx={{ height: '100%' }}>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                <AttachMoneyIcon sx={{ mr: 1, color: monthProfitLoss >= 0 ? 'info.main' : 'warning.main' }} />
+                <Typography variant="h6">Kar/Zarar</Typography>
+              </Box>
+              <Typography
+                variant="h4"
+                sx={{ fontWeight: 700, color: monthProfitLoss >= 0 ? 'info.main' : 'warning.main' }}>
+                ₺{monthProfitLoss.toFixed(2)}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                {monthProfitLoss >= 0 ? '✓ Kar' : '✗ Zarar'}
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Stok Değeri */}
+        <Grid item xs={12} md={3}>
+          <Card sx={{ height: '100%' }}>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                <InventoryIcon sx={{ mr: 1, color: 'primary.main' }} />
+                <Typography variant="h6">Stok Değeri</Typography>
+              </Box>
+              <Typography variant="h4" sx={{ fontWeight: 700, color: 'primary.main' }}>
+                ₺{totalStockValue.toFixed(2)}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                {totalStockCount} adet
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
+
+      {/* Yıllık Özet Kartlar */}
+      <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+        {selectedYear === null || selectedYear === 0 ? 'Tüm Zamanlar - Özet' : `${selectedYear} - Yıllık Özet`}
+      </Typography>
+      <Grid container spacing={3} sx={{ mb: 4 }}>
+        {/* Yıllık Satış */}
+        <Grid item xs={12} md={4}>
+          <Card sx={{ height: '100%', bgcolor: 'success.50' }}>
+            <CardContent>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                Toplam Satış
+              </Typography>
+              <Typography variant="h4" sx={{ fontWeight: 700, color: 'success.main' }}>
+                ₺{yearSalesRevenue.toFixed(2)}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                {yearSales.length} işlem
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Yıllık Alış */}
+        <Grid item xs={12} md={4}>
+          <Card sx={{ height: '100%', bgcolor: 'error.50' }}>
+            <CardContent>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                Toplam Alış
+              </Typography>
+              <Typography variant="h4" sx={{ fontWeight: 700, color: 'error.main' }}>
+                ₺{yearPurchaseCost.toFixed(2)}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                {yearPurchases.length} işlem
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Yıllık Kar/Zarar */}
+        <Grid item xs={12} md={4}>
+          <Card sx={{ height: '100%', bgcolor: yearProfitLoss >= 0 ? 'info.50' : 'warning.50' }}>
+            <CardContent>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                Net Kar/Zarar
+              </Typography>
+              <Typography
+                variant="h4"
+                sx={{ fontWeight: 700, color: yearProfitLoss >= 0 ? 'info.main' : 'warning.main' }}>
+                ₺{yearProfitLoss.toFixed(2)}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                {yearProfitLoss >= 0 ? '✓ Kar' : '✗ Zarar'}
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
+
+      <Grid container spacing={3}>
+        {/* En Çok Satan Balıklar */}
+        <Grid item xs={12} md={6}>
+          <Paper sx={{ p: 3, height: '100%' }}>
+            <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+              En Çok Satan Balıklar
+              {selectedMonth !== null && selectedMonth !== 0 ? ' (Aylık)' : ''}
+            </Typography>
+            {topSellingFishes.length === 0 ? (
+              <Typography color="text.secondary">Henüz satış bulunmuyor</Typography>
+            ) : (
+              topSellingFishes.map((fish, index) => (
+                <Box
+                  key={index}
+                  sx={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    py: 1.5,
+                    borderBottom: index < topSellingFishes.length - 1 ? '1px solid' : 'none',
+                    borderColor: 'divider',
+                  }}>
+                  <Box>
+                    <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                      {index + 1}. {fish.name}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {fish.quantity} adet satıldı
+                    </Typography>
+                  </Box>
+                  <Typography variant="body1" sx={{ fontWeight: 600, color: 'success.main' }}>
+                    ₺{fish.revenue.toFixed(2)}
+                  </Typography>
+                </Box>
+              ))
+            )}
+          </Paper>
+        </Grid>
+
+        {/* Düşük Stok Uyarıları */}
+        <Grid item xs={12} md={6}>
+          <Paper sx={{ p: 3, height: '100%' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+              <WarningIcon sx={{ mr: 1, color: 'warning.main' }} />
+              <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                Düşük Stok Uyarıları
+              </Typography>
+            </Box>
+            {lowStockFishes.length === 0 ? (
+              <Typography color="text.secondary">Tüm ürünler yeterli stokta ✓</Typography>
+            ) : (
+              lowStockFishes.slice(0, 10).map((fish) => (
+                <Box
+                  key={fish.id}
+                  sx={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    py: 1.5,
+                    borderBottom: '1px solid',
+                    borderColor: 'divider',
+                  }}>
+                  <Typography variant="body1">{fish.name}</Typography>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: (fish.stock || 0) < 5 ? 'error.main' : 'warning.main',
+                      fontWeight: 600,
+                      bgcolor: (fish.stock || 0) < 5 ? 'error.50' : 'warning.50',
+                      px: 2,
+                      py: 0.5,
+                      borderRadius: 1,
+                    }}>
+                    {fish.stock || 0} adet
+                  </Typography>
+                </Box>
+              ))
+            )}
+          </Paper>
+        </Grid>
+
+        {/* Son Satışlar */}
+        <Grid item xs={12} md={6}>
+          <Paper sx={{ p: 3 }}>
+            <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+              Son Satışlar
+            </Typography>
+            {filteredSales.length === 0 ? (
+              <Typography color="text.secondary">Satış bulunmuyor</Typography>
+            ) : (
+              filteredSales.slice(0, 5).map((sale) => (
+                <Box
+                  key={sale.id}
+                  sx={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    py: 1.5,
+                    borderBottom: '1px solid',
+                    borderColor: 'divider',
+                  }}>
+                  <Box>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      {sale.date?.toDate?.()?.toLocaleDateString('tr-TR') || '-'}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {sale.items?.length || 0} ürün • {sale.customerName || 'Müşteri'}
+                    </Typography>
+                  </Box>
+                  <Typography variant="body1" sx={{ fontWeight: 600, color: 'success.main' }}>
+                    ₺{sale.total?.toFixed(2) || '0.00'}
+                  </Typography>
+                </Box>
+              ))
+            )}
+          </Paper>
+        </Grid>
+
+        {/* Son Alışlar */}
+        <Grid item xs={12} md={6}>
+          <Paper sx={{ p: 3 }}>
+            <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+              Son Alışlar
+            </Typography>
+            {filteredPurchases.length === 0 ? (
+              <Typography color="text.secondary">Alış bulunmuyor</Typography>
+            ) : (
+              filteredPurchases.slice(0, 5).map((purchase) => (
+                <Box
+                  key={purchase.id}
+                  sx={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    py: 1.5,
+                    borderBottom: '1px solid',
+                    borderColor: 'divider',
+                  }}>
+                  <Box>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      {purchase.date?.toDate?.()?.toLocaleDateString('tr-TR') || '-'}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {purchase.items?.length || 0} ürün • {purchase.supplierId || 'Tedarikçi'}
+                    </Typography>
+                  </Box>
+                  <Typography variant="body1" sx={{ fontWeight: 600, color: 'error.main' }}>
+                    ₺{purchase.totalCostWithShipping?.toFixed(2) || '0.00'}
+                  </Typography>
+                </Box>
+              ))
+            )}
+          </Paper>
+        </Grid>
+      </Grid>
     </Box>
   );
 };
