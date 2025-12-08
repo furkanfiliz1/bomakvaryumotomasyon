@@ -20,3 +20,14 @@ export const createFishSpeciesSchema = (categories: SelectOptions) =>
 
 export type FishCategoryFormData = yup.InferType<typeof fishCategorySchema>;
 export type FishSpeciesFormData = yup.InferType<ReturnType<typeof createFishSpeciesSchema>>;
+
+// Fish Filter Schema
+export const createFishFilterSchema = (categories: SelectOptions) =>
+  yup.object({
+    name: fields.text.label('Balık Adı').meta({ col: 6 }),
+    categoryId: fields
+      .select([{ id: '', name: 'Tümü' }, ...categories], 'string', ['id', 'name'])
+      .label('Kategori').meta({ col: 6 }),
+  });
+
+export type FishFilterFormData = yup.InferType<ReturnType<typeof createFishFilterSchema>>;

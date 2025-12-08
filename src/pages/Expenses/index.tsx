@@ -20,22 +20,108 @@ import {
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Form, useNotice } from '@components';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
-import { expenseSchema, ExpenseFormData } from './expenses.validation';
+import { createExpenseSchema, createExpenseFilterSchema, ExpenseFormData } from './expenses.validation';
 import { expenseService } from '../../services/expenseService';
 import { Expense } from '../../types/expense';
+import { userService } from '../../services/userService';
+import { User } from '../../types/user';
 
 const ExpensesPage = () => {
   const theme = useTheme();
   const notice = useNotice();
 
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
   const [openDialog, setOpenDialog] = useState(false);
   const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
+
+  // Load users
+  useEffect(() => {
+    const loadUsers = async () => {
+      try {
+        const data = await userService.getAllUsers();
+        console.log('✅ Loaded users:', data);
+        setUsers(data);
+      } catch (error) {
+        console.error('❌ Users loading error:', error);
+      }
+    };
+    loadUsers();
+  }, []);
+
+  // Create dynamic schema with user options
+  const expenseSchema = useMemo(() => {
+    const userOptions = users.map((user) => ({ id: user.id, name: user.username }));
+    console.log('📝 User options for schema:', userOptions);
+    return createExpenseSchema(userOptions);
+  }, [users]);
+
+  // Create filter schema with user options
+  const expenseFilterSchema = useMemo(() => {
+    const userOptions = users.map((user) => ({ id: user.id, name: user.username }));
+    return createExpenseFilterSchema(userOptions);
+  }, [users]);
+
+  // Filter Form
+  const filterForm = useForm({
+    defaultValues: { category: '', paymentType: '', userId: '', startDate: '', endDate: '' },
+    resolver: yupResolver(expenseFilterSchema),
+  });
+
+  const filterCategory = filterForm.watch('category');
+  const filterPaymentType = filterForm.watch('paymentType');
+  const filterUserId = filterForm.watch('userId');
+  const filterStartDate = filterForm.watch('startDate');
+  const filterEndDate = filterForm.watch('endDate');
+
+  // Filtered expenses based on form filters
+  const filteredExpenses = useMemo(() => {
+    let filtered = [...expenses];
+
+    // Filter by category
+    if (filterCategory) {
+      filtered = filtered.filter((expense) => expense.category === filterCategory);
+    }
+
+    // Filter by payment type
+    if (filterPaymentType) {
+      filtered = filtered.filter((expense) => expense.paymentType === filterPaymentType);
+    }
+
+    // Filter by user
+    if (filterUserId) {
+      filtered = filtered.filter((expense) => expense.userId === filterUserId);
+    }
+
+    // Filter by start date
+    if (filterStartDate) {
+      filtered = filtered.filter((expense) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const expenseDate = (expense.date as any)?.toDate
+          ? (expense.date as any).toDate()
+          : new Date(expense.date as any);
+        return expenseDate >= new Date(filterStartDate);
+      });
+    }
+
+    // Filter by end date
+    if (filterEndDate) {
+      filtered = filtered.filter((expense) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const expenseDate = (expense.date as any)?.toDate
+          ? (expense.date as any).toDate()
+          : new Date(expense.date as any);
+        return expenseDate <= new Date(filterEndDate);
+      });
+    }
+
+    return filtered;
+  }, [expenses, filterCategory, filterPaymentType, filterUserId, filterStartDate, filterEndDate]);
 
   // Add Form
   const addForm = useForm<ExpenseFormData>({
@@ -44,6 +130,7 @@ const ExpensesPage = () => {
       category: '',
       amount: 0,
       paymentType: '',
+      userId: '',
       description: '',
     },
     resolver: yupResolver(expenseSchema),
@@ -56,10 +143,17 @@ const ExpensesPage = () => {
       category: '',
       amount: 0,
       paymentType: '',
+      userId: '',
       description: '',
     },
     resolver: yupResolver(expenseSchema),
   });
+
+  // Update form resolver when schema changes
+  useEffect(() => {
+    addForm.clearErrors();
+    editForm.clearErrors();
+  }, [expenseSchema, addForm, editForm]);
 
   const loadExpenses = async () => {
     setLoading(true);
@@ -115,12 +209,15 @@ const ExpensesPage = () => {
   const handleAddExpense = async (values: any) => {
     try {
       setLoading(true);
+      const selectedUser = users.find((u) => u.id === values.userId);
       await expenseService.addExpense({
         date: new Date(values.date),
         category: values.category,
         amount: Number(values.amount),
         description: values.description || '',
         paymentType: values.paymentType || '',
+        userId: values.userId,
+        userName: selectedUser?.username || '',
       });
 
       notice({
@@ -154,6 +251,7 @@ const ExpensesPage = () => {
       category: expense.category,
       amount: expense.amount,
       paymentType: expense.paymentType || '',
+      userId: expense.userId || '',
       description: expense.description || '',
     });
     setOpenDialog(true);
@@ -165,12 +263,15 @@ const ExpensesPage = () => {
 
     try {
       setLoading(true);
+      const selectedUser = users.find((u) => u.id === values.userId);
       await expenseService.updateExpense(editingExpenseId, {
         date: new Date(values.date),
         category: values.category,
         amount: Number(values.amount),
         description: values.description || '',
         paymentType: values.paymentType || '',
+        userId: values.userId,
+        userName: selectedUser?.username || '',
       });
 
       notice({
@@ -248,6 +349,22 @@ const ExpensesPage = () => {
         </Button>
       </Box>
 
+      {/* Filter Form */}
+      <Paper sx={{ p: 2, mb: 2 }}>
+        <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+          Filtrele
+        </Typography>
+        <Form form={filterForm} schema={expenseFilterSchema} onSubmit={(e) => e.preventDefault()} />
+        <Box sx={{ mt: 2 }}>
+          <Button
+            variant="outlined"
+            onClick={() => filterForm.reset({ category: '', paymentType: '', userId: '', startDate: '', endDate: '' })}
+            size="small">
+            Filtreleri Temizle
+          </Button>
+        </Box>
+      </Paper>
+
       <TableContainer component={Paper}>
         <Table>
           <TableHead sx={{ backgroundColor: theme.palette.grey[100] }}>
@@ -258,6 +375,7 @@ const ExpensesPage = () => {
                 Tutar
               </TableCell>
               <TableCell sx={{ fontWeight: 600 }}>Ödeme Tipi</TableCell>
+              <TableCell sx={{ fontWeight: 600 }}>Kullanıcı</TableCell>
               <TableCell sx={{ fontWeight: 600 }}>Açıklama</TableCell>
               <TableCell sx={{ fontWeight: 600 }} align="right">
                 İşlemler
@@ -265,14 +383,16 @@ const ExpensesPage = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {expenses.length === 0 ? (
+            {filteredExpenses.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} sx={{ textAlign: 'center', py: 3 }}>
-                  <Typography color={theme.palette.grey[600]}>Henüz gider kaydı bulunmamaktadır</Typography>
+                <TableCell colSpan={7} sx={{ textAlign: 'center', py: 3 }}>
+                  <Typography color={theme.palette.grey[600]}>
+                    {expenses.length === 0 ? 'Henüz gider kaydı bulunmamaktadır' : 'Filtreye uygun gider bulunamadı'}
+                  </Typography>
                 </TableCell>
               </TableRow>
             ) : (
-              expenses.map((expense) => (
+              filteredExpenses.map((expense) => (
                 <TableRow key={expense.id}>
                   <TableCell>{formatDate(expense.date)}</TableCell>
                   <TableCell>
@@ -286,6 +406,7 @@ const ExpensesPage = () => {
                     {expense.amount?.toFixed(2)} ₺
                   </TableCell>
                   <TableCell>{expense.paymentType || '-'}</TableCell>
+                  <TableCell>{expense.userName || '-'}</TableCell>
                   <TableCell>{expense.description || '-'}</TableCell>
                   <TableCell align="right">
                     <IconButton size="small" color="primary" onClick={() => handleEditExpense(expense)} sx={{ mr: 1 }}>

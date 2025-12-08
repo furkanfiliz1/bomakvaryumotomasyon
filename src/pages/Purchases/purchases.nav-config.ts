@@ -1,8 +1,8 @@
 export const purchasesNavConfig = [
   {
-    title: 'Alışlar',
-    breadcrumbTitle: 'Alışlar',
+    title: 'Balık Alışlar',
+    breadcrumbTitle: 'Balık Alışlar',
     path: '/purchases',
-    icon: 'shopping-cart',
+    icon: 'sale-04',
   },
 ];

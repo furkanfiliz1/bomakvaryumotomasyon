@@ -488,7 +488,7 @@ const DashboardPage = () => {
         <Grid item xs={12} md={6}>
           <Paper sx={{ p: 3 }}>
             <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-              Son Alışlar
+              Son Balık Alışlar
             </Typography>
             {filteredPurchases.length === 0 ? (
               <Typography color="text.secondary">Alış bulunmuyor</Typography>

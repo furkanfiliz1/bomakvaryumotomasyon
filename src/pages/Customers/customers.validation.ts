@@ -22,3 +22,14 @@ export const customerSchema = yup.object({
 });
 
 export type CustomerFormData = yup.InferType<typeof customerSchema>;
+
+// Customer Filter Schema
+export const customerFilterSchema = yup.object({
+  name: fields.text.label('Müşteri Adı').meta({ col : 4}),
+  type: fields
+    .select([...customerTypeOptions, { id: '', name: 'Tümü' }], 'string', ['id', 'name'])
+    .label('Müşteri Tipi').meta({ col : 4}),
+  city: fields.text.label('Şehir').meta({ col : 4}),
+});
+
+export type CustomerFilterFormData = yup.InferType<typeof customerFilterSchema>;

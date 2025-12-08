@@ -24,9 +24,10 @@ import { useState, useEffect } from 'react';
 import { Form, useNotice } from '@components';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
-import { customerSchema, CustomerFormData } from './customers.validation';
+import { customerSchema, customerFilterSchema, CustomerFormData, CustomerFilterFormData } from './customers.validation';
 import { customerService } from '../../services/customerService';
 import { Customer } from '../../types/customer';
+import { useMemo } from 'react';
 
 const CustomersPage = () => {
   const theme = useTheme();
@@ -38,6 +39,24 @@ const CustomersPage = () => {
   // Customer Dialog
   const [openDialog, setOpenDialog] = useState(false);
   const [editingCustomerId, setEditingCustomerId] = useState<string | null>(null);
+
+  // Filter Form
+  const filterForm = useForm<CustomerFilterFormData>({
+    defaultValues: { name: '', type: '', city: '' },
+    resolver: yupResolver(customerFilterSchema),
+  });
+
+  const watchFilters = filterForm.watch();
+
+  // Filtered customers based on form filters
+  const filteredCustomers = useMemo(() => {
+    return customers.filter((customer) => {
+      const nameMatch = !watchFilters.name || customer.name.toLowerCase().includes(watchFilters.name.toLowerCase());
+      const typeMatch = !watchFilters.type || customer.type === watchFilters.type;
+      const cityMatch = !watchFilters.city || customer.city?.toLowerCase().includes(watchFilters.city.toLowerCase());
+      return nameMatch && typeMatch && cityMatch;
+    });
+  }, [customers, watchFilters]);
 
   // Add Customer Form
   const addForm = useForm<CustomerFormData>({
@@ -199,17 +218,22 @@ const CustomersPage = () => {
       )}
 
       <Box>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Typography variant="h4" sx={{ fontWeight: 600, color: theme.palette.dark[800] }}>
-            Müşteriler
-          </Typography>
-          <Button
-            variant="contained"
-            onClick={() => setOpenDialog(true)}
-            sx={{ background: theme.palette.error[700], '&:hover': { background: theme.palette.error[800] } }}>
-            Yeni Müşteri Ekle
-          </Button>
-        </Box>
+        {/* Filter Form */}
+        <Paper sx={{ p: 2, mb: 2 }}>
+          <Form form={filterForm} schema={customerFilterSchema} onSubmit={(e) => e.preventDefault()} />
+          <Box sx={{ mt: 2, display: 'flex', gap: 1, justifyContent: 'flex-end', alignItems: 'center' }}>
+            <Button variant="outlined" onClick={() => filterForm.reset({ name: '', type: '', city: '' })}>
+              Temizle
+            </Button>
+
+            <Button
+              variant="contained"
+              onClick={() => setOpenDialog(true)}
+              sx={{ background: theme.palette.error[700], '&:hover': { background: theme.palette.error[800] } }}>
+              Yeni Müşteri Ekle
+            </Button>
+          </Box>
+        </Paper>
 
         <TableContainer component={Paper}>
           <Table>
@@ -226,14 +250,16 @@ const CustomersPage = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {customers.length === 0 ? (
+              {filteredCustomers.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} sx={{ textAlign: 'center', py: 3 }}>
-                    <Typography color={theme.palette.grey[600]}>Henüz müşteri eklenmemiştir</Typography>
+                    <Typography color={theme.palette.grey[600]}>
+                      {customers.length === 0 ? 'Henüz müşteri eklenmemiştir' : 'Filtreye uygun müşteri bulunamadı'}
+                    </Typography>
                   </TableCell>
                 </TableRow>
               ) : (
-                customers.map((customer) => (
+                filteredCustomers.map((customer) => (
                   <TableRow key={customer.id}>
                     <TableCell>{customer.name}</TableCell>
                     <TableCell>

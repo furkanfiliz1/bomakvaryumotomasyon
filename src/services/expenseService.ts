@@ -31,8 +31,10 @@ export const expenseService = {
       description: expense.description || '',
       paymentType: expense.paymentType || '',
       relatedPartyId: expense.relatedPartyId || '',
+      userId: expense.userId || '',
+      userName: expense.userName || '',
       createdAt: Timestamp.now(),
-      createdBy: '',
+      createdBy: expense.userId || '',
     });
     return docRef.id;
   },
@@ -62,7 +64,7 @@ export const expenseService = {
 
   // Tüm Giderleri Getirme
   async getAllExpenses(): Promise<Expense[]> {
-    const q = query(collection(db, COLLECTION_NAME), orderBy('date', 'desc'));
+    const q = query(collection(db, COLLECTION_NAME), orderBy('createdAt', 'desc'));
     const querySnapshot = await getDocs(q);
 
     const expenses: Expense[] = [];
@@ -78,6 +80,8 @@ export const expenseService = {
         description: data.description || '',
         paymentType: data.paymentType || '',
         relatedPartyId: data.relatedPartyId || '',
+        userId: data.userId || '',
+        userName: data.userName || '',
         createdAt: data.createdAt,
         createdBy: data.createdBy || '',
       });

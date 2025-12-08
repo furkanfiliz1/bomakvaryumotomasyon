@@ -19,13 +19,13 @@ import {
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Form, useNotice } from '@components';
 import { db } from '../../../config/firebase';
 import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
-import { createFishSpeciesSchema, FishSpeciesFormData } from './fish.validation';
+import { createFishSpeciesSchema, createFishFilterSchema, FishSpeciesFormData } from './fish.validation';
 
 interface FishCategory {
   id?: string;
@@ -57,6 +57,9 @@ const FishesPage = () => {
   // Create schema with current categories
   const fishSpeciesSchema = createFishSpeciesSchema(categories);
 
+  // Create filter schema
+  const fishFilterSchema = useMemo(() => createFishFilterSchema(categories), [categories]);
+
   // Add Fish Form
   const addFishForm = useForm<FishSpeciesFormData>({
     defaultValues: { name: '', categoryId: '' },
@@ -68,6 +71,24 @@ const FishesPage = () => {
     defaultValues: { name: '', categoryId: '' },
     resolver: yupResolver(fishSpeciesSchema),
   });
+
+  // Filter Form
+  const filterForm = useForm({
+    defaultValues: { name: '', categoryId: '' },
+    resolver: yupResolver(fishFilterSchema),
+  });
+
+  const filterName = filterForm.watch('name');
+  const filterCategoryId = filterForm.watch('categoryId');
+
+  // Filtered fishes based on form filters
+  const filteredFishes = useMemo(() => {
+    return fishes.filter((fish) => {
+      const nameMatch = !filterName || fish.name.toLowerCase().includes(filterName.toLowerCase());
+      const categoryMatch = !filterCategoryId || fish.categoryId === filterCategoryId;
+      return nameMatch && categoryMatch;
+    });
+  }, [fishes, filterName, filterCategoryId]);
 
   const loadCategories = async () => {
     console.log('🔄 Kategoriler yükleniyor...');
@@ -308,24 +329,30 @@ const FishesPage = () => {
 
       {/* Fishes Section */}
       <Box>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Typography variant="h4" sx={{ fontWeight: 600, color: theme.palette.dark[800] }}>
-            Balık Türleri
-          </Typography>
-          <Button
-            variant="contained"
-            onClick={() => setOpenFishDialog(true)}
-            disabled={categories.length === 0}
-            sx={{ background: theme.palette.error[700], '&:hover': { background: theme.palette.error[800] } }}>
-            Yeni Balık Ekle
-          </Button>
-        </Box>
-
         {categories.length === 0 && (
           <Paper sx={{ p: 2, mb: 2, bgcolor: theme.palette.warning[100] }}>
             <Typography color={theme.palette.warning[800]}>
               Balık eklemeden önce kategori oluşturmanız gerekmektedir.
             </Typography>
+          </Paper>
+        )}
+
+        {/* Filter Form */}
+        {categories.length > 0 && (
+          <Paper sx={{ p: 2, mb: 2 }}>
+            <Form form={filterForm} schema={fishFilterSchema} onSubmit={(e) => e.preventDefault()} />
+            <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 1 }}>
+              <Button variant="outlined" onClick={() => filterForm.reset({ name: '', categoryId: '' })}>
+                Temizle
+              </Button>
+              <Button
+                variant="contained"
+                onClick={() => setOpenFishDialog(true)}
+                disabled={categories.length === 0}
+                sx={{ background: theme.palette.error[700], '&:hover': { background: theme.palette.error[800] } }}>
+                Balık Ekle
+              </Button>
+            </Box>
           </Paper>
         )}
 
@@ -341,14 +368,16 @@ const FishesPage = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {fishes.length === 0 ? (
+              {filteredFishes.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={3} sx={{ textAlign: 'center', py: 3 }}>
-                    <Typography color={theme.palette.grey[600]}>Henüz balık eklenmemiştir</Typography>
+                    <Typography color={theme.palette.grey[600]}>
+                      {fishes.length === 0 ? 'Henüz balık eklenmemiştir' : 'Filtreye uygun balık bulunamadı'}
+                    </Typography>
                   </TableCell>
                 </TableRow>
               ) : (
-                fishes.map((fish) => (
+                filteredFishes.map((fish) => (
                   <TableRow key={fish.id}>
                     <TableCell>{fish.name}</TableCell>
                     <TableCell>{fish.categoryName || 'Bilinmiyor'}</TableCell>

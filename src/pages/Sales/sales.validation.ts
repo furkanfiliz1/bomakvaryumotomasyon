@@ -17,3 +17,27 @@ export const createSaleSchema = (customerOptions: { value: string; label: string
 export const saleSchema = createSaleSchema([]);
 
 export type SaleFormData = yup.InferType<ReturnType<typeof createSaleSchema>>;
+
+// Sales Filter Schema
+export const createSaleFilterSchema = (
+  customerOptions: { value: string; label: string }[],
+  categoryOptions: { value: string; label: string }[],
+  fishOptions: { value: string; label: string }[]
+) =>
+  yup.object({
+    customerId: fields
+      .select([{ value: '', label: 'Tümü' }, ...customerOptions], 'string', ['value', 'label']).meta({ col: 4 })
+      .label('Müşteri'),
+    categoryId: fields
+      .select([{ value: '', label: 'Tümü' }, ...categoryOptions], 'string', ['value', 'label']).meta({ col: 4 })
+      .label('Kategori'),
+    fishId: fields
+      .select([{ value: '', label: 'Tümü' }, ...fishOptions], 'string', ['value', 'label']).meta({ col: 4 })  
+      .label('Balık'),
+    startDate: fields.date.label('Başlangıç Tarihi').meta({ col: 6 }),
+    endDate: fields.date.label('Bitiş Tarihi').meta({ col: 6 }),
+  });
+
+export const saleFilterSchema = createSaleFilterSchema([], [], []);
+
+export type SaleFilterFormData = yup.InferType<ReturnType<typeof createSaleFilterSchema>>;

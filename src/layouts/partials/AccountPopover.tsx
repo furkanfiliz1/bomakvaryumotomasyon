@@ -5,7 +5,7 @@ import { Divider, IconButton, MenuItem, Stack, Typography, useTheme } from '@mui
 
 import { Icon, MenuPopover } from '@components';
 
-import { useAppDispatch, useResponsive } from '@hooks';
+import { useAppDispatch, useAppSelector, useResponsive } from '@hooks';
 import { authRedux } from '@store';
 import { IconTypes } from 'src/components/common/Icon/types';
 import AccountPopoverAvatar from './AccountPopoverAvatar';
@@ -21,6 +21,7 @@ interface MenuOption {
 export default function AccountPopover() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
+  const user = useAppSelector((state) => state.auth.user);
   const smDown = useResponsive('down', 'sm');
   const theme = useTheme();
 
@@ -74,21 +75,13 @@ export default function AccountPopover() {
     dispatch(authRedux.logout());
   };
 
-  const FirstName = 'bom';
-  const LastName = '';
-  const userFullName = `${FirstName} ${LastName}`;
-  const avatarText = `${FirstName[0] ?? ''}${LastName[0] ?? ''}`;
+  const userName = user?.userName || 'Kullanıcı';
+  const avatarText = userName.substring(0, 2).toUpperCase();
 
   return (
     <>
       <IconButton ref={anchorRef} onClick={handleOpen} id={'account'} sx={{ ':hover': { background: 'transparent' } }}>
-        <AccountPopoverAvatar
-          title={userFullName}
-          description={''}
-          avatarText={avatarText}
-          isShow={smDown}
-          open={open}
-        />
+        <AccountPopoverAvatar title={userName} description={''} avatarText={avatarText} isShow={smDown} open={open} />
         {!smDown ? <Icon icon="chevron-down" size={24} /> : null}
       </IconButton>
 
@@ -116,13 +109,7 @@ export default function AccountPopover() {
         <Divider sx={{ borderStyle: 'dashed' }} /> */}
 
         <Stack sx={{ p: 2, pb: 1 }}>
-          <AccountPopoverAvatar
-            title={userFullName}
-            description={''}
-            avatarText={avatarText}
-            isShow={false}
-            open={open}
-          />
+          <AccountPopoverAvatar title={userName} description={''} avatarText={avatarText} isShow={false} open={open} />
 
           <Divider sx={{ pt: 1 }} />
 

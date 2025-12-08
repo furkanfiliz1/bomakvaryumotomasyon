@@ -19,13 +19,15 @@ import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
-import { useNotice } from '@components';
+import { useNotice, Form } from '@components';
 import { purchaseService } from '../../services/purchaseService';
 import { fishService } from '../../services/fishService';
 import { Purchase, PurchaseItem } from '../../types/purchase';
 import { Fish, FishCategory } from '../../types/fish';
 import { Timestamp } from 'firebase/firestore';
 import * as yup from 'yup';
+import { createPurchaseFilterSchema } from './purchases.validation';
+import { useMemo } from 'react';
 
 // Validation schema
 const purchaseSchema = yup.object().shape({
@@ -83,6 +85,74 @@ const PurchasesPage = () => {
   const watchDiscount = form.watch('discountAmount');
   const watchShipping = form.watch('shippingCost');
 
+  // Category and Fish options for filter
+  const categoryOptions = categories.map((cat) => ({
+    value: cat.id || '',
+    label: cat.name,
+  }));
+
+  const fishOptions = fishes.map((fish) => ({
+    value: fish.id || '',
+    label: fish.name,
+  }));
+
+  // Create filter schema with options
+  const purchaseFilterSchemaWithOptions = useMemo(
+    () => createPurchaseFilterSchema(categoryOptions, fishOptions),
+    [categoryOptions, fishOptions],
+  );
+
+  // Filter Form
+  const filterForm = useForm({
+    defaultValues: { categoryId: '', fishTypeId: '', startDate: '', endDate: '' },
+    resolver: yupResolver(purchaseFilterSchemaWithOptions),
+  });
+
+  const filterCategoryId = filterForm.watch('categoryId');
+  const filterFishTypeId = filterForm.watch('fishTypeId');
+  const filterStartDate = filterForm.watch('startDate');
+  const filterEndDate = filterForm.watch('endDate');
+
+  // Filtered purchases based on form filters
+  const filteredPurchases = useMemo(() => {
+    let filtered = [...purchases];
+
+    // Filter by category
+    if (filterCategoryId) {
+      filtered = filtered.filter((purchase) =>
+        purchase.items?.some((item) => {
+          const fish = fishes.find((f) => f.id === item.fishTypeId);
+          return fish?.categoryId === filterCategoryId;
+        }),
+      );
+    }
+
+    // Filter by fish type
+    if (filterFishTypeId) {
+      filtered = filtered.filter((purchase) => purchase.items?.some((item) => item.fishTypeId === filterFishTypeId));
+    }
+
+    // Filter by start date
+    if (filterStartDate) {
+      filtered = filtered.filter((purchase) => {
+        const purchaseDate =
+          purchase.date instanceof Timestamp ? purchase.date.toDate() : new Date(purchase.date as unknown as string);
+        return purchaseDate >= new Date(filterStartDate);
+      });
+    }
+
+    // Filter by end date
+    if (filterEndDate) {
+      filtered = filtered.filter((purchase) => {
+        const purchaseDate =
+          purchase.date instanceof Timestamp ? purchase.date.toDate() : new Date(purchase.date as unknown as string);
+        return purchaseDate <= new Date(filterEndDate);
+      });
+    }
+
+    return filtered;
+  }, [purchases, filterCategoryId, filterFishTypeId, filterStartDate, filterEndDate, fishes]);
+
   // Load data
   useEffect(() => {
     loadPurchases();
@@ -101,7 +171,7 @@ const PurchasesPage = () => {
       notice({
         variant: 'error',
         title: 'Hata',
-        message: 'Alışlar yüklenirken hata oluştu',
+        message: 'Balık Alışlar yüklenirken hata oluştu',
         buttonTitle: 'Tamam',
       });
     } finally {
@@ -227,8 +297,7 @@ const PurchasesPage = () => {
         note: item.note,
       }));
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const purchaseData: any = {
+      const purchaseData: Omit<Purchase, 'id' | 'createdAt'> = {
         date: Timestamp.fromDate(purchaseDate),
         monthKey,
         year,
@@ -237,6 +306,7 @@ const PurchasesPage = () => {
         discountAmount,
         netTotal,
         totalCostWithShipping,
+        createdBy: '',
       };
 
       // Only add optional fields if they have values
@@ -339,26 +409,44 @@ const PurchasesPage = () => {
     <Box sx={{ p: 3 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4" sx={{ fontWeight: 600 }}>
-          Alışlar
+          Balık Alışlar
         </Typography>
         <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={handleOpenDialog}>
           Yeni Alış Ekle
         </Button>
       </Box>
 
+      {/* Filter Form */}
+      <Paper sx={{ p: 2, mb: 2 }}>
+        <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+          Filtrele
+        </Typography>
+        <Form form={filterForm} schema={purchaseFilterSchemaWithOptions} onSubmit={(e) => e.preventDefault()} />
+        <Box sx={{ mt: 2 }}>
+          <Button
+            variant="outlined"
+            onClick={() => filterForm.reset({ categoryId: '', fishTypeId: '', startDate: '', endDate: '' })}
+            size="small">
+            Filtreleri Temizle
+          </Button>
+        </Box>
+      </Paper>
+
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
           <CircularProgress />
         </Box>
-      ) : purchases.length === 0 ? (
+      ) : filteredPurchases.length === 0 ? (
         <Paper sx={{ p: 3 }}>
           <Typography color="text.secondary">
-            Henüz alış kaydı bulunmuyor. Yeni alış eklemek için yukarıdaki butonu kullanın.
+            {purchases.length === 0
+              ? 'Henüz alış kaydı bulunmuyor. Yeni alış eklemek için yukarıdaki butonu kullanın.'
+              : 'Filtreye uygun alış bulunamadı'}
           </Typography>
         </Paper>
       ) : (
         <Stack spacing={2}>
-          {purchases.map((purchase) => {
+          {filteredPurchases.map((purchase) => {
             const isExpanded = expandedPurchaseId === purchase.id;
 
             return (

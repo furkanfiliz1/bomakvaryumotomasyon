@@ -34,8 +34,11 @@ export default function Login() {
   const onSubmit = async (values: { UserName: string; Password: string }) => {
     setIsLoading(true);
     try {
-      // Test: hardcoded kullanıcı kontrolü
-      if (values.UserName === 'furkan' && values.Password === '123456') {
+      // Firebase'den kullanıcı kontrolü
+      const { userService } = await import('../../../services/userService');
+      const user = await userService.validateUser(values.UserName, values.Password);
+
+      if (user) {
         // Rastgele token oluştur
         const token = `token_${Math.random().toString(36).substr(2, 9)}_${Date.now()}`;
 
@@ -44,8 +47,8 @@ export default function Login() {
           authRedux.login({
             token,
             user: {
-              userName: values.UserName,
-              email: 'furkan@example.com',
+              userName: user.username,
+              email: `${user.username}@example.com`,
             },
           }),
         );
@@ -53,7 +56,7 @@ export default function Login() {
         notice({
           variant: 'success',
           title: 'Başarılı',
-          message: `Hoşgeldiniz ${values.UserName}!`,
+          message: `Hoşgeldiniz ${user.username}!`,
           buttonTitle: 'Tamam',
         });
         navigate('/dashboard');
@@ -66,6 +69,7 @@ export default function Login() {
         });
       }
     } catch (error) {
+      console.error('Login error:', error);
       notice({
         variant: 'error',
         title: 'Hata',

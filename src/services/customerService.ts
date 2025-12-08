@@ -42,7 +42,7 @@ export const customerService = {
 
   // Tüm Müşterileri Getirme
   async getAllCustomers(): Promise<Customer[]> {
-    const q = query(collection(db, COLLECTION_NAME), orderBy('name'));
+    const q = query(collection(db, COLLECTION_NAME), orderBy('createdAt', 'desc'));
     const querySnapshot = await getDocs(q);
 
     const customers: Customer[] = [];

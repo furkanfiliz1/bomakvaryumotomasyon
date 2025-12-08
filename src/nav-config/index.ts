@@ -5,6 +5,7 @@ import { customersNavConfig } from 'src/pages/Customers/customers.nav-config';
 import { salesNavConfig } from 'src/pages/Sales/sales.nav-config';
 import { purchasesNavConfig } from 'src/pages/Purchases/purchases.nav-config';
 import { expensesNavConfig } from 'src/pages/Expenses/expenses.nav-config';
+import { usersNavConfig } from 'src/pages/Users/users.nav-config';
 
 
 export default [
@@ -14,6 +15,7 @@ export default [
   ...salesNavConfig,
   ...purchasesNavConfig,
   ...expensesNavConfig,
+  ...usersNavConfig,
  
 
   {

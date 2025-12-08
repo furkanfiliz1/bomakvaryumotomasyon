@@ -32,14 +32,14 @@ import { fishService } from '../../services/fishService';
 import { Sale } from '../../types/sale';
 import { Customer } from '../../types/customer';
 import { Fish, FishCategory } from '../../types/fish';
-import { saleSchema, createSaleSchema } from './sales.validation';
+import { saleSchema, createSaleSchema, createSaleFilterSchema } from './sales.validation';
+import { useMemo } from 'react';
 
 const SalesPage = () => {
   const theme = useTheme();
   const notice = useNotice();
 
   const [sales, setSales] = useState<Sale[]>([]);
-  const [filteredSales, setFilteredSales] = useState<Sale[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [categories, setCategories] = useState<FishCategory[]>([]);
   const [fishes, setFishes] = useState<Fish[]>([]);
@@ -48,13 +48,6 @@ const SalesPage = () => {
   const [openDialog, setOpenDialog] = useState(false);
   const [editingSaleId, setEditingSaleId] = useState<string | null>(null);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
-
-  // Filter state
-  const [filterCustomerId, setFilterCustomerId] = useState<string>('');
-  const [filterCategoryId, setFilterCategoryId] = useState<string>('');
-  const [filterFishId, setFilterFishId] = useState<string>('');
-  const [filterStartDate, setFilterStartDate] = useState<string>('');
-  const [filterEndDate, setFilterEndDate] = useState<string>('');
 
   // Items state for multiple fish
   const [saleItems, setSaleItems] = useState<
@@ -169,8 +162,83 @@ const SalesPage = () => {
     label: `${customer.name} - ${customer.type}`,
   }));
 
+  // Category options
+  const categoryOptions = categories.map((cat) => ({
+    value: cat.id || '',
+    label: cat.name,
+  }));
+
+  // Fish options
+  const fishOptions = fishes.map((fish) => ({
+    value: fish.id || '',
+    label: fish.name,
+  }));
+
   // Create schema with customer options
   const saleSchemaWithOptions = createSaleSchema(customerOptions);
+
+  // Create filter schema with options
+  const saleFilterSchemaWithOptions = useMemo(
+    () => createSaleFilterSchema(customerOptions, categoryOptions, fishOptions),
+    [customerOptions, categoryOptions, fishOptions],
+  );
+
+  // Filter Form
+  const filterForm = useForm({
+    defaultValues: { customerId: '', categoryId: '', fishId: '', startDate: '', endDate: '' },
+    resolver: yupResolver(saleFilterSchemaWithOptions),
+  });
+
+  const filterCustomerId = filterForm.watch('customerId');
+  const filterCategoryId = filterForm.watch('categoryId');
+  const filterFishId = filterForm.watch('fishId');
+  const filterStartDate = filterForm.watch('startDate');
+  const filterEndDate = filterForm.watch('endDate');
+
+  // Filtered sales based on form filters
+  const filteredSales = useMemo(() => {
+    let filtered = [...sales];
+
+    // Filter by customer
+    if (filterCustomerId) {
+      filtered = filtered.filter((sale) => sale.customerId === filterCustomerId);
+    }
+
+    // Filter by category
+    if (filterCategoryId) {
+      filtered = filtered.filter((sale) =>
+        sale.items?.some((item) => {
+          const fish = fishes.find((f) => f.id === item.fishId);
+          return fish?.categoryId === filterCategoryId;
+        }),
+      );
+    }
+
+    // Filter by fish
+    if (filterFishId) {
+      filtered = filtered.filter((sale) => sale.items?.some((item) => item.fishId === filterFishId));
+    }
+
+    // Filter by start date
+    if (filterStartDate) {
+      filtered = filtered.filter((sale) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const saleDate = (sale.date as any)?.toDate ? (sale.date as any).toDate() : new Date(sale.date as any);
+        return saleDate >= new Date(filterStartDate);
+      });
+    }
+
+    // Filter by end date
+    if (filterEndDate) {
+      filtered = filtered.filter((sale) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const saleDate = (sale.date as any)?.toDate ? (sale.date as any).toDate() : new Date(sale.date as any);
+        return saleDate <= new Date(filterEndDate);
+      });
+    }
+
+    return filtered;
+  }, [sales, filterCustomerId, filterCategoryId, filterFishId, filterStartDate, filterEndDate, fishes]);
 
   const loadCustomers = async () => {
     try {
@@ -243,59 +311,6 @@ const SalesPage = () => {
     loadSales();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // Apply filters
-  useEffect(() => {
-    let filtered = [...sales];
-
-    // Filter by customer
-    if (filterCustomerId) {
-      filtered = filtered.filter((sale) => sale.customerId === filterCustomerId);
-    }
-
-    // Filter by category
-    if (filterCategoryId) {
-      filtered = filtered.filter((sale) =>
-        sale.items?.some((item) => {
-          const fish = fishes.find((f) => f.id === item.fishId);
-          return fish?.categoryId === filterCategoryId;
-        }),
-      );
-    }
-
-    // Filter by fish
-    if (filterFishId) {
-      filtered = filtered.filter((sale) => sale.items?.some((item) => item.fishId === filterFishId));
-    }
-
-    // Filter by start date
-    if (filterStartDate) {
-      filtered = filtered.filter((sale) => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const saleDate = (sale.date as any)?.toDate ? (sale.date as any).toDate() : new Date(sale.date as any);
-        return saleDate >= new Date(filterStartDate);
-      });
-    }
-
-    // Filter by end date
-    if (filterEndDate) {
-      filtered = filtered.filter((sale) => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const saleDate = (sale.date as any)?.toDate ? (sale.date as any).toDate() : new Date(sale.date as any);
-        return saleDate <= new Date(filterEndDate);
-      });
-    }
-
-    setFilteredSales(filtered);
-  }, [sales, filterCustomerId, filterCategoryId, filterFishId, filterStartDate, filterEndDate, fishes]);
-
-  const handleClearFilters = () => {
-    setFilterCustomerId('');
-    setFilterCategoryId('');
-    setFilterFishId('');
-    setFilterStartDate('');
-    setFilterEndDate('');
-  };
 
   const handleDeleteSale = async (id: string) => {
     try {
@@ -485,133 +500,20 @@ const SalesPage = () => {
           <CircularProgress />
         </Box>
       )}
-
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography variant="h4" sx={{ fontWeight: 600, color: theme.palette.dark[800] }}>
-          Satışlar
-        </Typography>
-        <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={handleAddSale}>
-          Yeni Satış Ekle
-        </Button>
-      </Box>
-
       {/* Filter Section */}
       <Paper sx={{ p: 2, mb: 2 }}>
-        <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-          Filtreleme
-        </Typography>
-        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 2 }}>
-          {/* Customer Filter */}
-          <Box>
-            <Typography variant="caption" sx={{ mb: 0.5, display: 'block' }}>
-              Müşteri
-            </Typography>
-            <select
-              value={filterCustomerId}
-              onChange={(e) => setFilterCustomerId(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '8px',
-                borderRadius: '4px',
-                border: '1px solid #ccc',
-              }}>
-              <option value="">Tümü</option>
-              {customers.map((customer) => (
-                <option key={customer.id} value={customer.id}>
-                  {customer.name}
-                </option>
-              ))}
-            </select>
-          </Box>
-
-          {/* Category Filter */}
-          <Box>
-            <Typography variant="caption" sx={{ mb: 0.5, display: 'block' }}>
-              Balık Kategorisi
-            </Typography>
-            <select
-              value={filterCategoryId}
-              onChange={(e) => setFilterCategoryId(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '8px',
-                borderRadius: '4px',
-                border: '1px solid #ccc',
-              }}>
-              <option value="">Tümü</option>
-              {categories.map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.name}
-                </option>
-              ))}
-            </select>
-          </Box>
-
-          {/* Fish Filter */}
-          <Box>
-            <Typography variant="caption" sx={{ mb: 0.5, display: 'block' }}>
-              Balık
-            </Typography>
-            <select
-              value={filterFishId}
-              onChange={(e) => setFilterFishId(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '8px',
-                borderRadius: '4px',
-                border: '1px solid #ccc',
-              }}>
-              <option value="">Tümü</option>
-              {fishes.map((fish) => (
-                <option key={fish.id} value={fish.id}>
-                  {fish.name}
-                </option>
-              ))}
-            </select>
-          </Box>
-
-          {/* Start Date Filter */}
-          <Box>
-            <Typography variant="caption" sx={{ mb: 0.5, display: 'block' }}>
-              Başlangıç Tarihi
-            </Typography>
-            <input
-              type="date"
-              value={filterStartDate}
-              onChange={(e) => setFilterStartDate(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '8px',
-                borderRadius: '4px',
-                border: '1px solid #ccc',
-              }}
-            />
-          </Box>
-
-          {/* End Date Filter */}
-          <Box>
-            <Typography variant="caption" sx={{ mb: 0.5, display: 'block' }}>
-              Bitiş Tarihi
-            </Typography>
-            <input
-              type="date"
-              value={filterEndDate}
-              onChange={(e) => setFilterEndDate(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '8px',
-                borderRadius: '4px',
-                border: '1px solid #ccc',
-              }}
-            />
-          </Box>
-
-          {/* Clear Filters Button */}
-          <Box sx={{ display: 'flex', alignItems: 'flex-end' }}>
-            <Button variant="outlined" onClick={handleClearFilters} fullWidth>
-              Filtreleri Temizle
-            </Button>
-          </Box>
+        <Form form={filterForm} schema={saleFilterSchemaWithOptions} onSubmit={(e) => e.preventDefault()} />
+        <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 1 }}>
+          <Button
+            variant="outlined"
+            onClick={() =>
+              filterForm.reset({ customerId: '', categoryId: '', fishId: '', startDate: '', endDate: '' })
+            }>
+            Filtreleri Temizle
+          </Button>
+          <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={handleAddSale}>
+            Yeni Satış Ekle
+          </Button>
         </Box>
       </Paper>
 

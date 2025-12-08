@@ -13,6 +13,8 @@ export interface Expense {
   description?: string;
   paymentType?: PaymentType;
   relatedPartyId?: string;
+  userId?: string;
+  userName?: string;
   createdAt?: Timestamp;
   createdBy?: string;
 }
@@ -24,4 +26,5 @@ export interface ExpenseFormData {
   description?: string;
   paymentType?: PaymentType | string;
   relatedPartyId?: string;
+  userId?: string;
 }

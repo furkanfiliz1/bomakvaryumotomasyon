@@ -17,7 +17,7 @@ export const purchaseService = {
   getAllPurchases: async (): Promise<Purchase[]> => {
     try {
       const purchasesRef = collection(db, 'purchases');
-      const q = query(purchasesRef, orderBy('date', 'desc'));
+      const q = query(purchasesRef, orderBy('createdAt', 'desc'));
       const querySnapshot = await getDocs(q);
       
       return querySnapshot.docs.map((doc) => ({

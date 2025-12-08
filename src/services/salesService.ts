@@ -47,7 +47,7 @@ export const salesService = {
 
   // Tüm Satışları Getirme
   async getAllSales(): Promise<Sale[]> {
-    const q = query(collection(db, COLLECTION_NAME), orderBy('date', 'desc'));
+    const q = query(collection(db, COLLECTION_NAME), orderBy('createdAt', 'desc'));
     const querySnapshot = await getDocs(q);
 
     const sales: Sale[] = [];

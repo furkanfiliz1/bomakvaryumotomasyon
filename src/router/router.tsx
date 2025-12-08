@@ -12,6 +12,7 @@ import { customersRouter } from 'src/pages/Customers/customers.routes';
 import { salesRouter } from 'src/pages/Sales/sales.routes';
 import { purchasesRouter } from 'src/pages/Purchases/purchases.routes';
 import { expensesRouter } from 'src/pages/Expenses/expenses.routes';
+import { usersRouter } from 'src/pages/Users/users.routes';
 
 const routes: IRouteObject[] = [
   {
@@ -42,7 +43,7 @@ const routes: IRouteObject[] = [
       ...salesRouter,
 
       /**
-        Alışlar
+        Balık Alışlar
        */
       ...purchasesRouter,
 
@@ -50,6 +51,11 @@ const routes: IRouteObject[] = [
         Giderler
        */
       ...expensesRouter,
+
+      /**
+        Kullanıcılar
+       */
+      ...usersRouter,
 
       {
         path: '404',
