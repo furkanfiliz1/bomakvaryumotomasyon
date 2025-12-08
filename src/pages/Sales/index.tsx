@@ -29,9 +29,11 @@ import { useNotice, Form } from '@components';
 import { salesService } from '../../services/salesService';
 import { customerService } from '../../services/customerService';
 import { fishService } from '../../services/fishService';
+import { tankService } from '../../services/tankService';
 import { Sale } from '../../types/sale';
 import { Customer } from '../../types/customer';
 import { Fish, FishCategory } from '../../types/fish';
+import { Tank } from '../../types/tank';
 import { saleSchema, createSaleSchema, createSaleFilterSchema } from './sales.validation';
 import { useMemo } from 'react';
 
@@ -43,6 +45,7 @@ const SalesPage = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [categories, setCategories] = useState<FishCategory[]>([]);
   const [fishes, setFishes] = useState<Fish[]>([]);
+  const [tanks, setTanks] = useState<Tank[]>([]);
   const [filteredFishes, setFilteredFishes] = useState<Fish[]>([]);
   const [loading, setLoading] = useState(false);
   const [openDialog, setOpenDialog] = useState(false);
@@ -58,6 +61,7 @@ const SalesPage = () => {
       gift: number;
       unitPrice: number;
       total: number;
+      tankId?: string;
     }[]
   >([]);
   const [currentItem, setCurrentItem] = useState({
@@ -66,6 +70,7 @@ const SalesPage = () => {
     quantity: 1,
     gift: 0,
     unitPrice: 0,
+    tankId: '',
   });
 
   // Add Form
@@ -142,6 +147,7 @@ const SalesPage = () => {
       quantity: 1,
       gift: 0,
       unitPrice: 0,
+      tankId: '',
     });
     setFilteredFishes([]);
   };
@@ -285,6 +291,15 @@ const SalesPage = () => {
     }
   };
 
+  const loadTanks = async () => {
+    try {
+      const data = await tankService.getAllTanks();
+      setTanks(data);
+    } catch (error) {
+      console.error('❌ Tanks loading error:', error);
+    }
+  };
+
   const loadSales = async () => {
     setLoading(true);
     try {
@@ -308,6 +323,7 @@ const SalesPage = () => {
     loadCustomers();
     loadCategories();
     loadFishes();
+    loadTanks();
     loadSales();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -353,6 +369,7 @@ const SalesPage = () => {
       quantity: 1,
       gift: 0,
       unitPrice: 0,
+      tankId: '',
     });
     setFilteredFishes([]);
     setOpenDialog(true);
@@ -429,6 +446,7 @@ const SalesPage = () => {
           soldQuantity: item.quantity,
           unitPrice: item.unitPrice,
           total: item.total,
+          tankId: item.tankId,
         };
       });
 
@@ -453,10 +471,46 @@ const SalesPage = () => {
         });
       } else {
         await salesService.addSale(saleData);
+
+        // Update tank stocks for items with tankId (decrease stock)
+        for (const item of saleItems) {
+          if (item.tankId) {
+            const tank = tanks.find((t) => t.id === item.tankId);
+            const fish = fishes.find((f) => f.id === item.fishId);
+            const category = categories.find((c) => c.id === fish?.categoryId);
+            const soldQty = item.quantity - item.gift; // Actual sold quantity (excluding gifts)
+
+            if (tank && fish && soldQty > 0) {
+              try {
+                // Check if enough stock exists
+                const currentStock = await tankService.checkTankStock(tank.id!, fish.id!);
+                if (currentStock < soldQty) {
+                  console.warn(
+                    `Yetersiz stok: Tank ${tank.name} - ${fish.name}. Mevcut: ${currentStock}, İhtiyaç: ${soldQty}`,
+                  );
+                  // Continue anyway - you might want to show a warning to the user
+                }
+
+                await tankService.updateTankStock(
+                  tank.id!,
+                  tank.name,
+                  fish.id!,
+                  fish.name,
+                  category?.name || '',
+                  -soldQty, // Negative to decrease stock
+                );
+              } catch (stockError) {
+                console.error('Stok güncelleme hatası:', stockError);
+                // Continue with other items even if one fails
+              }
+            }
+          }
+        }
+
         notice({
           variant: 'success',
           title: 'Başarılı',
-          message: 'Satış eklendi',
+          message: 'Satış eklendi ve stoklar güncellendi',
           buttonTitle: 'Tamam',
         });
       }
@@ -769,6 +823,29 @@ const SalesPage = () => {
                       border: '1px solid #ccc',
                     }}
                   />
+                </Box>
+
+                {/* Tank Selection */}
+                <Box>
+                  <Typography variant="caption" sx={{ mb: 0.5, display: 'block' }}>
+                    Tank (Opsiyonel)
+                  </Typography>
+                  <select
+                    value={currentItem.tankId}
+                    onChange={(e) => setCurrentItem({ ...currentItem, tankId: e.target.value })}
+                    style={{
+                      width: '100%',
+                      padding: '8px',
+                      borderRadius: '4px',
+                      border: '1px solid #ccc',
+                    }}>
+                    <option value="">Seçiniz</option>
+                    {tanks.map((tank) => (
+                      <option key={tank.id} value={tank.id}>
+                        {tank.name} ({tank.code})
+                      </option>
+                    ))}
+                  </select>
                 </Box>
 
                 {/* Add Button */}

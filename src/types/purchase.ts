@@ -6,6 +6,7 @@ export interface PurchaseItem {
   unitPrice: number;
   lineTotal: number;
   note?: string;
+  tankId?: string; // NEW: tank where fish will be placed
 }
 
 export interface Purchase {

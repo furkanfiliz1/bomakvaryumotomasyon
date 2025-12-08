@@ -1,5 +1,7 @@
 import { Timestamp } from 'firebase/firestore';
 
+export type SaleStatus = 'pending' | 'partial' | 'paid';
+
 export interface SaleItem {
   fishId: string;
   fishName: string;
@@ -10,6 +12,7 @@ export interface SaleItem {
   soldQuantity: number;
   unitPrice: number;
   total: number;
+  tankId?: string; // NEW: tank where fish come from
 }
 
 export interface Sale {
@@ -24,6 +27,11 @@ export interface Sale {
   notes?: string;
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
+  
+  // NEW: Payment tracking fields
+  paidAmount?: number;
+  remainingAmount?: number;
+  status?: SaleStatus;
 }
 
 export interface SaleFormData {

@@ -101,10 +101,10 @@ const ExpensesPage = () => {
     // Filter by start date
     if (filterStartDate) {
       filtered = filtered.filter((expense) => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const expenseDate = (expense.date as any)?.toDate
-          ? (expense.date as any).toDate()
-          : new Date(expense.date as any);
+        const expenseDate =
+          expense.date && typeof expense.date === 'object' && 'toDate' in expense.date
+            ? (expense.date as { toDate: () => Date }).toDate()
+            : new Date(expense.date as unknown as string);
         return expenseDate >= new Date(filterStartDate);
       });
     }
@@ -112,10 +112,10 @@ const ExpensesPage = () => {
     // Filter by end date
     if (filterEndDate) {
       filtered = filtered.filter((expense) => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const expenseDate = (expense.date as any)?.toDate
-          ? (expense.date as any).toDate()
-          : new Date(expense.date as any);
+        const expenseDate =
+          expense.date && typeof expense.date === 'object' && 'toDate' in expense.date
+            ? (expense.date as { toDate: () => Date }).toDate()
+            : new Date(expense.date as unknown as string);
         return expenseDate <= new Date(filterEndDate);
       });
     }

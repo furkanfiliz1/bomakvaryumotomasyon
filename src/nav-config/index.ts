@@ -4,8 +4,11 @@ import { fishNavConfig } from 'src/pages/Dashboard/Fish/fish.nav-config';
 import { customersNavConfig } from 'src/pages/Customers/customers.nav-config';
 import { salesNavConfig } from 'src/pages/Sales/sales.nav-config';
 import { purchasesNavConfig } from 'src/pages/Purchases/purchases.nav-config';
+import { tanksNavConfig } from 'src/pages/Tanks/tanks.nav-config';
 import { expensesNavConfig } from 'src/pages/Expenses/expenses.nav-config';
 import { usersNavConfig } from 'src/pages/Users/users.nav-config';
+import { cashNavConfig } from 'src/pages/Cash/cash.nav-config';
+import { collectionsNavConfig } from 'src/pages/Collections/collections.nav-config';
 
 
 export default [
@@ -14,8 +17,11 @@ export default [
   ...customersNavConfig,
   ...salesNavConfig,
   ...purchasesNavConfig,
+  ...tanksNavConfig,
   ...expensesNavConfig,
   ...usersNavConfig,
+  ...cashNavConfig,
+  ...collectionsNavConfig,
  
 
   {

@@ -13,6 +13,9 @@ import { salesRouter } from 'src/pages/Sales/sales.routes';
 import { purchasesRouter } from 'src/pages/Purchases/purchases.routes';
 import { expensesRouter } from 'src/pages/Expenses/expenses.routes';
 import { usersRouter } from 'src/pages/Users/users.routes';
+import { tanksRouter } from 'src/pages/Tanks/tanks.routes';
+import { cashRouter } from 'src/pages/Cash/cash.routes';
+import { collectionsRouter } from 'src/pages/Collections/collections.routes';
 
 const routes: IRouteObject[] = [
   {
@@ -48,6 +51,11 @@ const routes: IRouteObject[] = [
       ...purchasesRouter,
 
       /**
+        Tanklar
+       */
+      ...tanksRouter,
+
+      /**
         Giderler
        */
       ...expensesRouter,
@@ -56,6 +64,16 @@ const routes: IRouteObject[] = [
         Kullanıcılar
        */
       ...usersRouter,
+
+      /**
+        Kasa
+       */
+      ...cashRouter,
+
+      /**
+        Tahsilatlar
+       */
+      ...collectionsRouter,
 
       {
         path: '404',

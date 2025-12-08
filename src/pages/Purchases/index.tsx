@@ -22,8 +22,10 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import { useNotice, Form } from '@components';
 import { purchaseService } from '../../services/purchaseService';
 import { fishService } from '../../services/fishService';
+import { tankService } from '../../services/tankService';
 import { Purchase, PurchaseItem } from '../../types/purchase';
 import { Fish, FishCategory } from '../../types/fish';
+import { Tank } from '../../types/tank';
 import { Timestamp } from 'firebase/firestore';
 import * as yup from 'yup';
 import { createPurchaseFilterSchema } from './purchases.validation';
@@ -44,6 +46,7 @@ const PurchasesPage = () => {
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [categories, setCategories] = useState<FishCategory[]>([]);
   const [fishes, setFishes] = useState<Fish[]>([]);
+  const [tanks, setTanks] = useState<Tank[]>([]);
   const [filteredFishes, setFilteredFishes] = useState<Fish[]>([]);
   const [loading, setLoading] = useState(false);
   const [openDialog, setOpenDialog] = useState(false);
@@ -59,6 +62,7 @@ const PurchasesPage = () => {
       unitPrice: number;
       lineTotal: number;
       note?: string;
+      tankId?: string;
     }[]
   >([]);
 
@@ -68,6 +72,7 @@ const PurchasesPage = () => {
     qty: 1,
     unitPrice: 0,
     note: '',
+    tankId: '',
   });
 
   // Form
@@ -158,6 +163,7 @@ const PurchasesPage = () => {
     loadPurchases();
     loadCategories();
     loadFishes();
+    loadTanks();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -194,6 +200,15 @@ const PurchasesPage = () => {
       setFishes(data);
     } catch (error) {
       console.error('Error loading fishes:', error);
+    }
+  };
+
+  const loadTanks = async () => {
+    try {
+      const data = await tankService.getAllTanks();
+      setTanks(data);
+    } catch (error) {
+      console.error('Error loading tanks:', error);
     }
   };
 
@@ -238,6 +253,7 @@ const PurchasesPage = () => {
         unitPrice: currentItem.unitPrice,
         lineTotal,
         note: currentItem.note,
+        tankId: currentItem.tankId,
       },
     ]);
 
@@ -247,6 +263,7 @@ const PurchasesPage = () => {
       qty: 1,
       unitPrice: 0,
       note: '',
+      tankId: '',
     });
     setFilteredFishes([]);
   };
@@ -295,6 +312,7 @@ const PurchasesPage = () => {
         unitPrice: item.unitPrice,
         lineTotal: item.lineTotal,
         note: item.note,
+        tankId: item.tankId,
       }));
 
       const purchaseData: Omit<Purchase, 'id' | 'createdAt'> = {
@@ -330,10 +348,36 @@ const PurchasesPage = () => {
         });
       } else {
         await purchaseService.addPurchase(purchaseData);
+
+        // Update tank stocks for items with tankId
+        for (const item of purchaseItems) {
+          if (item.tankId) {
+            const tank = tanks.find((t) => t.id === item.tankId);
+            const fish = fishes.find((f) => f.id === item.fishTypeId);
+            const category = categories.find((c) => c.id === fish?.categoryId);
+
+            if (tank && fish) {
+              try {
+                await tankService.updateTankStock(
+                  tank.id!,
+                  tank.name,
+                  fish.id!,
+                  fish.name,
+                  category?.name || '',
+                  item.qty,
+                );
+              } catch (stockError) {
+                console.error('Error updating tank stock:', stockError);
+                // Continue with other items even if one fails
+              }
+            }
+          }
+        }
+
         notice({
           variant: 'success',
           title: 'Başarılı',
-          message: 'Alış eklendi',
+          message: 'Alış eklendi ve stoklar güncellendi',
           buttonTitle: 'Tamam',
         });
       }
@@ -395,6 +439,7 @@ const PurchasesPage = () => {
     // Reload categories and fishes to get latest data
     loadCategories();
     loadFishes();
+    loadTanks();
   };
 
   // Handle close dialog
@@ -682,6 +727,29 @@ const PurchasesPage = () => {
                       border: '1px solid #ccc',
                     }}
                   />
+                </Box>
+
+                {/* Tank Selection */}
+                <Box sx={{ gridColumn: 'span 2' }}>
+                  <Typography variant="body2" sx={{ mb: 0.5 }}>
+                    Tank (Opsiyonel)
+                  </Typography>
+                  <select
+                    value={currentItem.tankId}
+                    onChange={(e) => setCurrentItem({ ...currentItem, tankId: e.target.value })}
+                    style={{
+                      width: '100%',
+                      padding: '8px',
+                      borderRadius: '4px',
+                      border: '1px solid #ccc',
+                    }}>
+                    <option value="">Seçiniz</option>
+                    {tanks.map((tank) => (
+                      <option key={tank.id} value={tank.id}>
+                        {tank.name} ({tank.code})
+                      </option>
+                    ))}
+                  </select>
                 </Box>
               </Box>
 

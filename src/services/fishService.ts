@@ -14,8 +14,7 @@ const FISHES_COLLECTION = 'fishes';
 export const fishService = {
   // Tüm Balık Kategorilerini Getirme
   async getAllCategories(): Promise<FishCategory[]> {
-    const q = query(collection(db, CATEGORIES_COLLECTION), orderBy('name'));
-    const querySnapshot = await getDocs(q);
+    const querySnapshot = await getDocs(collection(db, CATEGORIES_COLLECTION));
 
     const categories: FishCategory[] = [];
     querySnapshot.forEach((doc) => {
@@ -60,8 +59,7 @@ export const fishService = {
 
   // Tüm Balıkları Getirme
   async getAllFishes(): Promise<Fish[]> {
-    const q = query(collection(db, FISHES_COLLECTION), orderBy('name'));
-    const querySnapshot = await getDocs(q);
+    const querySnapshot = await getDocs(collection(db, FISHES_COLLECTION));
 
     const fishes: Fish[] = [];
     querySnapshot.forEach((doc) => {
@@ -77,6 +75,8 @@ export const fishService = {
         updatedAt: data.updatedAt,
       });
     });
+
+    return fishes;
 
     return fishes;
   },

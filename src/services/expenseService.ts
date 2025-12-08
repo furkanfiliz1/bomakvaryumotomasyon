@@ -11,6 +11,7 @@ import {
   orderBy,
 } from 'firebase/firestore';
 import { Expense } from '../types/expense';
+import { cashService } from './cashService';
 
 const COLLECTION_NAME = 'expenses';
 
@@ -36,6 +37,18 @@ export const expenseService = {
       createdAt: Timestamp.now(),
       createdBy: expense.userId || '',
     });
+
+    // Ödeme tipi nakit ise kasadan düş
+    if (expense.paymentType === 'nakit' && expense.userId && expense.userName) {
+      await cashService.addTransaction({
+        userId: expense.userId,
+        username: expense.userName,
+        amount: expense.amount,
+        type: 'expense',
+        description: `Gider: ${expense.category} - ${expense.description || 'Açıklama yok'}`,
+      });
+    }
+
     return docRef.id;
   },
 
