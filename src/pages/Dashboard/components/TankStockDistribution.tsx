@@ -1,0 +1,62 @@
+import { Paper, Typography } from '@mui/material';
+import { PieChart } from '@mui/x-charts/PieChart';
+import { TankStock } from '../../../types/tank';
+
+interface TankStockDistributionProps {
+  tankStocks: TankStock[];
+}
+
+export const TankStockDistribution = ({ tankStocks }: TankStockDistributionProps) => {
+  // Tank bazlı toplam stok dağılımı
+  const tankDistribution = tankStocks.reduce((acc, stock) => {
+    const tankName = stock.tankName || 'Bilinmeyen Tank';
+    if (!acc[tankName]) {
+      acc[tankName] = 0;
+    }
+    acc[tankName] += stock.quantity;
+    return acc;
+  }, {} as Record<string, number>);
+
+  const chartData = Object.entries(tankDistribution).map(([tankName, quantity], index) => ({
+    id: index,
+    value: quantity,
+    label: `${tankName} (${quantity} adet)`,
+  }));
+
+  const totalFish = Object.values(tankDistribution).reduce((sum, qty) => sum + qty, 0);
+
+  return (
+    <Paper sx={{ p: 3, height: '100%' }}>
+      <Typography variant="h6" sx={{ mb: 1, fontWeight: 600 }}>
+        Tank Bazlı Stok Dağılımı
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        Toplam {totalFish} balık, {Object.keys(tankDistribution).length} tankta
+      </Typography>
+      {chartData.length > 0 ? (
+        <PieChart
+          series={[
+            {
+              data: chartData,
+              highlightScope: { faded: 'global', highlighted: 'item' },
+              faded: { innerRadius: 30, additionalRadius: -30, color: 'gray' },
+            },
+          ]}
+          height={300}
+          margin={{ right: 200 }}
+          slotProps={{
+            legend: {
+              direction: 'column',
+              position: { vertical: 'middle', horizontal: 'right' },
+              padding: 0,
+            },
+          }}
+        />
+      ) : (
+        <Typography color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
+          Henüz tank stoğu bulunmuyor
+        </Typography>
+      )}
+    </Paper>
+  );
+};
