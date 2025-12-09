@@ -38,12 +38,7 @@ export const TankOverview = ({ tanks, tankStocks }: TankOverviewProps) => {
             Tank Durumu
           </Typography>
         </Box>
-        <Chip
-          label={`${activeTanks.length} Aktif Tank`}
-          color="primary"
-          size="small"
-          variant="outlined"
-        />
+        <Chip label={`${activeTanks.length} Aktif Tank`} color="primary" size="small" variant="outlined" />
       </Box>
 
       {tankData.length === 0 ? (
@@ -112,9 +107,7 @@ export const TankOverview = ({ tanks, tankStocks }: TankOverviewProps) => {
                       </Typography>
                       <Chip label={tank.code} size="small" variant="outlined" />
                     </Box>
-                    {!tank.isActive && (
-                      <Chip label="Pasif" size="small" color="default" icon={<WarningAmberIcon />} />
-                    )}
+                    {!tank.isActive && <Chip label="Pasif" size="small" color="default" icon={<WarningAmberIcon />} />}
                   </Box>
 
                   <Grid container spacing={1} sx={{ mb: 1.5 }}>

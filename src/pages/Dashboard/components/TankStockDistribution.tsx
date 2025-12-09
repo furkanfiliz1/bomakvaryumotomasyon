@@ -8,14 +8,17 @@ interface TankStockDistributionProps {
 
 export const TankStockDistribution = ({ tankStocks }: TankStockDistributionProps) => {
   // Tank bazlı toplam stok dağılımı
-  const tankDistribution = tankStocks.reduce((acc, stock) => {
-    const tankName = stock.tankName || 'Bilinmeyen Tank';
-    if (!acc[tankName]) {
-      acc[tankName] = 0;
-    }
-    acc[tankName] += stock.quantity;
-    return acc;
-  }, {} as Record<string, number>);
+  const tankDistribution = tankStocks.reduce(
+    (acc, stock) => {
+      const tankName = stock.tankName || 'Bilinmeyen Tank';
+      if (!acc[tankName]) {
+        acc[tankName] = 0;
+      }
+      acc[tankName] += stock.quantity;
+      return acc;
+    },
+    {} as Record<string, number>,
+  );
 
   const chartData = Object.entries(tankDistribution).map(([tankName, quantity], index) => ({
     id: index,
