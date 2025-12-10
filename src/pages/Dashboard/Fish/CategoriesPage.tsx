@@ -16,6 +16,11 @@ import {
   useTheme,
   CircularProgress,
   IconButton,
+  Stack,
+  Card,
+  CardContent,
+  Grid,
+  Divider,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -26,6 +31,7 @@ import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc } from 'firebase
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import { fishCategorySchema, FishCategoryFormData } from './fish.validation';
+import useResponsive from '../../../hooks/useResponsive';
 
 interface FishCategory {
   id?: string;
@@ -37,6 +43,7 @@ interface FishCategory {
 const CategoriesPage = () => {
   const theme = useTheme();
   const notice = useNotice();
+  const isMobile = useResponsive('down', 'sm') ?? false;
 
   const [categories, setCategories] = useState<FishCategory[]>([]);
   const [loading, setLoading] = useState(false);
@@ -243,7 +250,7 @@ const CategoriesPage = () => {
   };
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box sx={{ p: { xs: 2, sm: 3 } }}>
       {loading && (
         <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
           <CircularProgress />
@@ -252,62 +259,135 @@ const CategoriesPage = () => {
 
       {/* Categories Section */}
       <Box>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Typography variant="h4" sx={{ fontWeight: 600, color: theme.palette.dark[800] }}>
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: { xs: 'column', sm: 'row' },
+            justifyContent: 'space-between',
+            alignItems: { xs: 'stretch', sm: 'center' },
+            gap: 2,
+            mb: 2,
+          }}>
+          <Typography variant={isMobile ? 'h5' : 'h4'} sx={{ fontWeight: 600, color: theme.palette.dark[800] }}>
             Balık Kategorileri
           </Typography>
           <Button
             variant="contained"
             onClick={() => setOpenCategoryDialog(true)}
+            fullWidth={isMobile}
             sx={{ background: theme.palette.error[700], '&:hover': { background: theme.palette.error[800] } }}>
             Yeni Kategori Ekle
           </Button>
         </Box>
 
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead sx={{ backgroundColor: theme.palette.grey[100] }}>
-              <TableRow>
-                <TableCell sx={{ fontWeight: 600 }}>Kategori Adı</TableCell>
-                <TableCell sx={{ fontWeight: 600 }}>Açıklama</TableCell>
-                <TableCell sx={{ fontWeight: 600 }} align="right">
-                  İşlemler
-                </TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {categories.length === 0 ? (
+        {isMobile ? (
+          <Stack spacing={2}>
+            {categories.length === 0 ? (
+              <Paper sx={{ p: 3 }}>
+                <Typography color="text.secondary" align="center">
+                  Henüz kategori eklenmemiştir
+                </Typography>
+              </Paper>
+            ) : (
+              categories.map((category) => (
+                <Card key={category.id} variant="outlined">
+                  <CardContent>
+                    <Grid container spacing={2}>
+                      <Grid item xs={12}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Typography variant="subtitle2" color="text.secondary">
+                            Kategori Adı
+                          </Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                            {category.name}
+                          </Typography>
+                        </Box>
+                      </Grid>
+                      <Grid item xs={12}>
+                        <Divider />
+                      </Grid>
+                      <Grid item xs={12}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
+                          <Typography variant="subtitle2" color="text.secondary">
+                            Açıklama
+                          </Typography>
+                          <Typography variant="body2" sx={{ textAlign: 'right', maxWidth: '60%' }}>
+                            {category.description || '-'}
+                          </Typography>
+                        </Box>
+                      </Grid>
+                      <Grid item xs={12}>
+                        <Stack direction="row" spacing={1}>
+                          <Button
+                            fullWidth
+                            variant="outlined"
+                            color="primary"
+                            startIcon={<EditIcon />}
+                            onClick={() => handleEditCategory(category)}>
+                            Düzenle
+                          </Button>
+                          <Button
+                            fullWidth
+                            variant="outlined"
+                            color="error"
+                            startIcon={<DeleteIcon />}
+                            onClick={() => category.id && handleDeleteCategory(category.id)}>
+                            Sil
+                          </Button>
+                        </Stack>
+                      </Grid>
+                    </Grid>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </Stack>
+        ) : (
+          <TableContainer component={Paper}>
+            <Table>
+              <TableHead sx={{ backgroundColor: theme.palette.grey[100] }}>
                 <TableRow>
-                  <TableCell colSpan={3} sx={{ textAlign: 'center', py: 3 }}>
-                    <Typography color={theme.palette.grey[600]}>Henüz kategori eklenmemiştir</Typography>
+                  <TableCell sx={{ fontWeight: 600 }}>Kategori Adı</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Açıklama</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }} align="right">
+                    İşlemler
                   </TableCell>
                 </TableRow>
-              ) : (
-                categories.map((category) => (
-                  <TableRow key={category.id}>
-                    <TableCell>{category.name}</TableCell>
-                    <TableCell>{category.description || '-'}</TableCell>
-                    <TableCell align="right">
-                      <IconButton
-                        size="small"
-                        color="primary"
-                        onClick={() => handleEditCategory(category)}
-                        sx={{ mr: 1 }}>
-                        <EditIcon fontSize="small" />
-                      </IconButton>
-                      <IconButton
-                        size="small"
-                        color="error"
-                        onClick={() => category.id && handleDeleteCategory(category.id)}>
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
+              </TableHead>
+              <TableBody>
+                {categories.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={3} sx={{ textAlign: 'center', py: 3 }}>
+                      <Typography color={theme.palette.grey[600]}>Henüz kategori eklenmemiştir</Typography>
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
+                ) : (
+                  categories.map((category) => (
+                    <TableRow key={category.id}>
+                      <TableCell>{category.name}</TableCell>
+                      <TableCell>{category.description || '-'}</TableCell>
+                      <TableCell align="right">
+                        <IconButton
+                          size="small"
+                          color="primary"
+                          onClick={() => handleEditCategory(category)}
+                          sx={{ mr: 1 }}>
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                        <IconButton
+                          size="small"
+                          color="error"
+                          onClick={() => category.id && handleDeleteCategory(category.id)}>
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
       </Box>
 
       {/* Add/Edit Category Dialog */}
@@ -320,7 +400,8 @@ const CategoriesPage = () => {
           editCategoryForm.reset();
         }}
         maxWidth="sm"
-        fullWidth>
+        fullWidth
+        fullScreen={isMobile}>
         <DialogTitle sx={{ fontWeight: 600, color: theme.palette.dark[800] }}>
           {editingCategoryId ? 'Kategori Güncelle' : 'Yeni Balık Kategorisi'}
         </DialogTitle>

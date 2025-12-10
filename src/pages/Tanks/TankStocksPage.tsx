@@ -24,6 +24,10 @@ import {
   FormControl,
   InputLabel,
   Chip,
+  Card,
+  CardContent,
+  Divider,
+  Grid,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import AddIcon from '@mui/icons-material/Add';
@@ -36,10 +40,12 @@ import { useNotice, Form } from '@components';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import { createTankStockSchema, TankStockFormData } from './tank-stock.validation';
+import useResponsive from '../../hooks/useResponsive';
 
 const TankStocksPage = () => {
   const theme = useTheme();
   const notice = useNotice();
+  const isMobile = useResponsive('down', 'sm') ?? false;
 
   const [tanks, setTanks] = useState<Tank[]>([]);
   const [tankStocks, setTankStocks] = useState<TankStock[]>([]);
@@ -297,28 +303,37 @@ const TankStocksPage = () => {
   );
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box sx={{ p: { xs: 2, sm: 3 } }}>
       {loading && (
         <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
           <CircularProgress />
         </Box>
       )}
 
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" sx={{ fontWeight: 600, color: theme.palette.dark[800] }}>
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', sm: 'row' },
+          justifyContent: 'space-between',
+          alignItems: { xs: 'stretch', sm: 'center' },
+          gap: 2,
+          mb: 3,
+        }}>
+        <Typography variant={isMobile ? 'h5' : 'h4'} sx={{ fontWeight: 600, color: theme.palette.dark[800] }}>
           Stok Yönetimi
         </Typography>
         <Button
           variant="contained"
           onClick={() => handleOpenAddDialog()}
+          fullWidth={isMobile}
           sx={{ background: theme.palette.primary.main, '&:hover': { background: theme.palette.primary.dark } }}>
           Yeni Stok Ekle
         </Button>
       </Box>
 
       {/* Filter by Tank */}
-      <Paper sx={{ p: 2, mb: 3 }}>
-        <FormControl fullWidth>
+      <Paper sx={{ p: { xs: 1.5, sm: 2 }, mb: 3 }}>
+        <FormControl fullWidth size={isMobile ? 'small' : 'medium'}>
           <InputLabel>Tank Seç</InputLabel>
           <Select value={selectedTankId} onChange={(e) => setSelectedTankId(e.target.value)} label="Tank Seç">
             <MenuItem value="">
@@ -340,52 +355,107 @@ const TankStocksPage = () => {
           const totalFish = stocks.reduce((sum, s) => sum + s.quantity, 0);
 
           return (
-            <Paper key={tankId} sx={{ p: 2 }}>
+            <Paper key={tankId} sx={{ p: { xs: 1.5, sm: 2 } }}>
               <Box sx={{ mb: 2 }}>
-                <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                <Typography variant="h6" sx={{ fontWeight: 600, fontSize: { xs: '1rem', sm: '1.25rem' } }}>
                   {tank?.name || 'Bilinmeyen Tank'} ({tank?.code})
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                   Toplam Balık: {totalFish} adet • {stocks.length} tür
                 </Typography>
               </Box>
 
-              <TableContainer>
-                <Table size="small">
-                  <TableHead>
-                    <TableRow sx={{ backgroundColor: theme.palette.grey[50] }}>
-                      <TableCell sx={{ fontWeight: 600 }}>Kategori</TableCell>
-                      <TableCell sx={{ fontWeight: 600 }}>Balık Türü</TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 600 }}>
-                        Miktar
-                      </TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 600 }}>
-                        İşlemler
-                      </TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {stocks.map((stock) => (
-                      <TableRow key={stock.id} hover>
-                        <TableCell>
-                          <Chip label={stock.categoryName} size="small" />
+              {isMobile ? (
+                // Mobile Card View
+                <Stack spacing={2}>
+                  {stocks.map((stock) => (
+                    <Card key={stock.id} variant="outlined">
+                      <CardContent>
+                        <Grid container spacing={2}>
+                          <Grid item xs={12}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Typography variant="subtitle2" color="text.secondary">
+                                Kategori
+                              </Typography>
+                              <Chip label={stock.categoryName} size="small" />
+                            </Box>
+                          </Grid>
+                          <Grid item xs={12}>
+                            <Divider />
+                          </Grid>
+                          <Grid item xs={12}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Typography variant="subtitle2" color="text.secondary">
+                                Balık Türü
+                              </Typography>
+                              <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                                {stock.fishTypeName}
+                              </Typography>
+                            </Box>
+                          </Grid>
+                          <Grid item xs={12}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Typography variant="subtitle2" color="text.secondary">
+                                Miktar
+                              </Typography>
+                              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                {stock.quantity}
+                              </Typography>
+                            </Box>
+                          </Grid>
+                          <Grid item xs={12}>
+                            <Button
+                              fullWidth
+                              variant="outlined"
+                              startIcon={<EditIcon />}
+                              onClick={() => handleOpenEditDialog(stock)}>
+                              Düzenle
+                            </Button>
+                          </Grid>
+                        </Grid>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </Stack>
+              ) : (
+                // Desktop Table View
+                <TableContainer>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow sx={{ backgroundColor: theme.palette.grey[50] }}>
+                        <TableCell sx={{ fontWeight: 600 }}>Kategori</TableCell>
+                        <TableCell sx={{ fontWeight: 600 }}>Balık Türü</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 600 }}>
+                          Miktar
                         </TableCell>
-                        <TableCell>{stock.fishTypeName}</TableCell>
-                        <TableCell align="right">
-                          <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                            {stock.quantity}
-                          </Typography>
-                        </TableCell>
-                        <TableCell align="right">
-                          <IconButton size="small" color="primary" onClick={() => handleOpenEditDialog(stock)}>
-                            <EditIcon fontSize="small" />
-                          </IconButton>
+                        <TableCell align="right" sx={{ fontWeight: 600 }}>
+                          İşlemler
                         </TableCell>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+                    </TableHead>
+                    <TableBody>
+                      {stocks.map((stock) => (
+                        <TableRow key={stock.id} hover>
+                          <TableCell>
+                            <Chip label={stock.categoryName} size="small" />
+                          </TableCell>
+                          <TableCell>{stock.fishTypeName}</TableCell>
+                          <TableCell align="right">
+                            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                              {stock.quantity}
+                            </Typography>
+                          </TableCell>
+                          <TableCell align="right">
+                            <IconButton size="small" color="primary" onClick={() => handleOpenEditDialog(stock)}>
+                              <EditIcon fontSize="small" />
+                            </IconButton>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              )}
             </Paper>
           );
         })}
@@ -400,7 +470,7 @@ const TankStocksPage = () => {
       </Stack>
 
       {/* Edit Stock Dialog */}
-      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
+      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth fullScreen={isMobile}>
         <DialogTitle>Stok Düzenle</DialogTitle>
         <DialogContent>
           {editingStock && (
@@ -422,52 +492,64 @@ const TankStocksPage = () => {
                 fullWidth
                 inputProps={{ min: 0 }}
               />
-              <Box sx={{ display: 'flex', gap: 1 }}>
-                <Button
-                  variant="outlined"
-                  startIcon={<RemoveIcon />}
-                  onClick={() =>
-                    setEditingStock({
-                      ...editingStock,
-                      newQuantity: Math.max(0, editingStock.newQuantity - 10),
-                    })
-                  }>
-                  -10
-                </Button>
-                <Button
-                  variant="outlined"
-                  startIcon={<RemoveIcon />}
-                  onClick={() =>
-                    setEditingStock({
-                      ...editingStock,
-                      newQuantity: Math.max(0, editingStock.newQuantity - 1),
-                    })
-                  }>
-                  -1
-                </Button>
-                <Button
-                  variant="outlined"
-                  startIcon={<AddIcon />}
-                  onClick={() =>
-                    setEditingStock({
-                      ...editingStock,
-                      newQuantity: editingStock.newQuantity + 1,
-                    })
-                  }>
-                  +1
-                </Button>
-                <Button
-                  variant="outlined"
-                  startIcon={<AddIcon />}
-                  onClick={() =>
-                    setEditingStock({
-                      ...editingStock,
-                      newQuantity: editingStock.newQuantity + 10,
-                    })
-                  }>
-                  +10
-                </Button>
-              </Box>
+              <Grid container spacing={1}>
+                <Grid item xs={6} sm={3}>
+                  <Button
+                    fullWidth
+                    variant="outlined"
+                    startIcon={<RemoveIcon />}
+                    onClick={() =>
+                      setEditingStock({
+                        ...editingStock,
+                        newQuantity: Math.max(0, editingStock.newQuantity - 10),
+                      })
+                    }>
+                    -10
+                  </Button>
+                </Grid>
+                <Grid item xs={6} sm={3}>
+                  <Button
+                    fullWidth
+                    variant="outlined"
+                    startIcon={<RemoveIcon />}
+                    onClick={() =>
+                      setEditingStock({
+                        ...editingStock,
+                        newQuantity: Math.max(0, editingStock.newQuantity - 1),
+                      })
+                    }>
+                    -1
+                  </Button>
+                </Grid>
+                <Grid item xs={6} sm={3}>
+                  <Button
+                    fullWidth
+                    variant="outlined"
+                    startIcon={<AddIcon />}
+                    onClick={() =>
+                      setEditingStock({
+                        ...editingStock,
+                        newQuantity: editingStock.newQuantity + 1,
+                      })
+                    }>
+                    +1
+                  </Button>
+                </Grid>
+                <Grid item xs={6} sm={3}>
+                  <Button
+                    fullWidth
+                    variant="outlined"
+                    startIcon={<AddIcon />}
+                    onClick={() =>
+                      setEditingStock({
+                        ...editingStock,
+                        newQuantity: editingStock.newQuantity + 10,
+                      })
+                    }>
+                    +10
+                  </Button>
+                </Grid>
+              </Grid>
             </Stack>
           )}
         </DialogContent>
@@ -480,7 +562,7 @@ const TankStocksPage = () => {
       </Dialog>
 
       {/* Add New Stock Dialog */}
-      <Dialog open={openAddDialog} onClose={handleCloseAddDialog} maxWidth="sm" fullWidth>
+      <Dialog open={openAddDialog} onClose={handleCloseAddDialog} maxWidth="sm" fullWidth fullScreen={isMobile}>
         <DialogTitle>Yeni Stok Ekle</DialogTitle>
         <DialogContent>
           <Box sx={{ mt: 2 }}>

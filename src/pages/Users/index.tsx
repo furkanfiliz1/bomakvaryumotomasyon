@@ -17,6 +17,11 @@ import {
   CircularProgress,
   IconButton,
   Chip,
+  Stack,
+  Divider,
+  Grid,
+  Card,
+  CardContent,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -27,10 +32,12 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import { userSchema, UserFormData } from './users.validation';
 import { userService } from '../../services/userService';
 import { User } from '../../types/user';
+import useResponsive from '../../hooks/useResponsive';
 
 const UsersPage = () => {
   const theme = useTheme();
   const notice = useNotice();
+  const isMobile = useResponsive('down', 'sm') ?? false;
 
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
@@ -38,7 +45,7 @@ const UsersPage = () => {
   // User Dialog
   const [openDialog, setOpenDialog] = useState(false);
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
-
+  console.log('users', users);
   // Add User Form
   const addForm = useForm<UserFormData>({
     defaultValues: { username: '', password: '' },
@@ -170,7 +177,7 @@ const UsersPage = () => {
   };
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box sx={{ p: { xs: 2, sm: 3 } }}>
       {loading && (
         <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
           <CircularProgress />
@@ -178,59 +185,142 @@ const UsersPage = () => {
       )}
 
       <Box>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Typography variant="h4" sx={{ fontWeight: 600, color: theme.palette.dark[800] }}>
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: { xs: 'column', sm: 'row' },
+            justifyContent: 'space-between',
+            alignItems: { xs: 'stretch', sm: 'center' },
+            gap: 2,
+            mb: 2,
+          }}>
+          <Typography variant={isMobile ? 'h5' : 'h4'} sx={{ fontWeight: 600, color: theme.palette.dark[800] }}>
             Kullanıcılar
           </Typography>
           <Button
             variant="contained"
             onClick={() => setOpenDialog(true)}
+            fullWidth={isMobile}
             sx={{ background: theme.palette.error[700], '&:hover': { background: theme.palette.error[800] } }}>
             Yeni Kullanıcı Ekle
           </Button>
         </Box>
 
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead sx={{ backgroundColor: theme.palette.grey[100] }}>
-              <TableRow>
-                <TableCell sx={{ fontWeight: 600 }}>Kullanıcı Adı</TableCell>
-                <TableCell sx={{ fontWeight: 600 }}>Rol</TableCell>
-                <TableCell sx={{ fontWeight: 600 }}>Oluşturulma Tarihi</TableCell>
-                <TableCell sx={{ fontWeight: 600 }} align="right">
-                  İşlemler
-                </TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {users.length === 0 ? (
+        {isMobile ? (
+          <Stack spacing={2}>
+            {users.length === 0 ? (
+              <Paper sx={{ p: 3 }}>
+                <Typography color="text.secondary" align="center">
+                  Henüz kullanıcı eklenmemiştir
+                </Typography>
+              </Paper>
+            ) : (
+              users.map((user) => (
+                <Card key={user.id} variant="outlined">
+                  <CardContent>
+                    <Grid container spacing={2}>
+                      <Grid item xs={12}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Typography variant="subtitle2" color="text.secondary">
+                            Kullanıcı Adı
+                          </Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                            {user.username}
+                          </Typography>
+                        </Box>
+                      </Grid>
+                      <Grid item xs={12}>
+                        <Divider />
+                      </Grid>
+                      <Grid item xs={12}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Typography variant="subtitle2" color="text.secondary">
+                            Rol
+                          </Typography>
+                          <Chip label="Admin" color="primary" size="small" />
+                        </Box>
+                      </Grid>
+                      <Grid item xs={12}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Typography variant="subtitle2" color="text.secondary">
+                            Oluşturulma Tarihi
+                          </Typography>
+                          <Typography variant="caption">
+                            {user.createdAt ? new Date(user.createdAt).toLocaleDateString('tr-TR') : '-'}
+                          </Typography>
+                        </Box>
+                      </Grid>
+                      <Grid item xs={12}>
+                        <Stack direction="row" spacing={1}>
+                          <Button
+                            fullWidth
+                            variant="outlined"
+                            color="primary"
+                            startIcon={<EditIcon />}
+                            onClick={() => handleEditUser(user)}>
+                            Düzenle
+                          </Button>
+                          <Button
+                            fullWidth
+                            variant="outlined"
+                            color="error"
+                            startIcon={<DeleteIcon />}
+                            onClick={() => user.id && handleDeleteUser(user.id)}>
+                            Sil
+                          </Button>
+                        </Stack>
+                      </Grid>
+                    </Grid>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </Stack>
+        ) : (
+          <TableContainer component={Paper}>
+            <Table>
+              <TableHead sx={{ backgroundColor: theme.palette.grey[100] }}>
                 <TableRow>
-                  <TableCell colSpan={4} sx={{ textAlign: 'center', py: 3 }}>
-                    <Typography color={theme.palette.grey[600]}>Henüz kullanıcı eklenmemiştir</Typography>
+                  <TableCell sx={{ fontWeight: 600 }}>Kullanıcı Adı</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Rol</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Oluşturulma Tarihi</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }} align="right">
+                    İşlemler
                   </TableCell>
                 </TableRow>
-              ) : (
-                users.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell>{user.username}</TableCell>
-                    <TableCell>
-                      <Chip label="Admin" color="primary" size="small" />
-                    </TableCell>
-                    <TableCell>{user.createdAt ? new Date(user.createdAt).toLocaleDateString('tr-TR') : '-'}</TableCell>
-                    <TableCell align="right">
-                      <IconButton size="small" color="primary" onClick={() => handleEditUser(user)} sx={{ mr: 1 }}>
-                        <EditIcon fontSize="small" />
-                      </IconButton>
-                      <IconButton size="small" color="error" onClick={() => user.id && handleDeleteUser(user.id)}>
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
+              </TableHead>
+              <TableBody>
+                {users.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={4} sx={{ textAlign: 'center', py: 3 }}>
+                      <Typography color={theme.palette.grey[600]}>Henüz kullanıcı eklenmemiştir</Typography>
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
+                ) : (
+                  users.map((user) => (
+                    <TableRow key={user.id}>
+                      <TableCell>{user.username}</TableCell>
+                      <TableCell>
+                        <Chip label="Admin" color="primary" size="small" />
+                      </TableCell>
+                      <TableCell>
+                        {user.createdAt ? new Date(user.createdAt).toLocaleDateString('tr-TR') : '-'}
+                      </TableCell>
+                      <TableCell align="right">
+                        <IconButton size="small" color="primary" onClick={() => handleEditUser(user)} sx={{ mr: 1 }}>
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                        <IconButton size="small" color="error" onClick={() => user.id && handleDeleteUser(user.id)}>
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
       </Box>
 
       {/* Add/Edit Dialog */}
@@ -243,7 +333,8 @@ const UsersPage = () => {
           editForm.reset();
         }}
         maxWidth="sm"
-        fullWidth>
+        fullWidth
+        fullScreen={isMobile}>
         <DialogTitle sx={{ fontWeight: 600, color: theme.palette.dark[800] }}>
           {editingUserId ? 'Kullanıcı Güncelle' : 'Yeni Kullanıcı Ekle'}
         </DialogTitle>

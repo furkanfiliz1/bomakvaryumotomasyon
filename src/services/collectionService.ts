@@ -18,7 +18,7 @@ class CollectionService {
     // Kasaya gelir olarak ekle
     await cashService.addTransaction({
       userId: SALES_USER_ID,
-      username: 'Satışlar',
+      username: 'Dükkan',
       amount: collectionData.collectedAmount,
       type: 'income',
       description: `${collectionData.customerName} - Satış Tahsilatı`,

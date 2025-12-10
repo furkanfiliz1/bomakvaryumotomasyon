@@ -15,10 +15,13 @@ import {
   Divider,
   Stack,
   Chip,
+  Drawer,
+  Badge,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import AddIcon from '@mui/icons-material/Add';
+import FilterListIcon from '@mui/icons-material/FilterList';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import Collapse from '@mui/material/Collapse';
@@ -30,10 +33,12 @@ import { salesService } from '../../services/salesService';
 import { customerService } from '../../services/customerService';
 import { fishService } from '../../services/fishService';
 import { tankService } from '../../services/tankService';
+import { collectionService } from '../../services/collectionService';
 import { Sale } from '../../types/sale';
+import { Collection } from '../../types/collection';
 import { Customer } from '../../types/customer';
 import { Fish, FishCategory } from '../../types/fish';
-import { Tank } from '../../types/tank';
+import { Tank, TankStock } from '../../types/tank';
 import { saleSchema, createSaleSchema, createSaleFilterSchema } from './sales.validation';
 import { useMemo } from 'react';
 
@@ -46,11 +51,15 @@ const SalesPage = () => {
   const [categories, setCategories] = useState<FishCategory[]>([]);
   const [fishes, setFishes] = useState<Fish[]>([]);
   const [tanks, setTanks] = useState<Tank[]>([]);
-  const [filteredFishes, setFilteredFishes] = useState<Fish[]>([]);
+  const [allTankStocks, setAllTankStocks] = useState<TankStock[]>([]);
+  const [tankStocks, setTankStocks] = useState<TankStock[]>([]);
+  const [collections, setCollections] = useState<Collection[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingStocks, setLoadingStocks] = useState(false);
   const [openDialog, setOpenDialog] = useState(false);
   const [editingSaleId, setEditingSaleId] = useState<string | null>(null);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
 
   // Items state for multiple fish
   const [saleItems, setSaleItems] = useState<
@@ -73,6 +82,11 @@ const SalesPage = () => {
     tankId: '',
   });
 
+  // State to hold input values for each fish in the stock table
+  const [fishInputs, setFishInputs] = useState<Record<string, { quantity: number; gift: number; unitPrice: number }>>(
+    {},
+  );
+
   // Add Form
   const addForm = useForm({
     resolver: yupResolver(saleSchema),
@@ -92,64 +106,110 @@ const SalesPage = () => {
   // Watch discount for auto-calculation
   const watchDiscount = addForm.watch('discount');
 
-  // Handle category change for current item
-  const handleCategoryChange = (categoryId: string) => {
-    setCurrentItem({ ...currentItem, categoryId, fishId: '', unitPrice: 0 });
-    const filtered = fishes.filter((fish) => fish.categoryId === categoryId);
-    setFilteredFishes(filtered);
-  };
+  // Handle tank change for current item
+  const handleTankChange = async (tankId: string) => {
+    console.log('🔄 Tank changed:', tankId);
+    console.log('📦 Available fishes:', fishes.length);
+    console.log('🏢 Available tanks:', tanks.length);
+    console.log('📦 All tank stocks:', allTankStocks.length);
 
-  // Handle fish change for current item
-  const handleFishChange = (fishId: string) => {
-    const selectedFish = fishes.find((fish) => fish.id === fishId);
-    if (selectedFish) {
-      setCurrentItem({
-        ...currentItem,
-        fishId,
-        unitPrice: selectedFish.unitPrice,
-      });
+    setCurrentItem({ ...currentItem, tankId, categoryId: '', fishId: '', unitPrice: 0 });
+
+    if (tankId) {
+      setLoadingStocks(true);
+      try {
+        // Filter stocks for selected tank from already loaded data
+        const stocks = allTankStocks.filter((stock) => stock.tankId === tankId);
+        console.log('✅ Filtered stocks for tank:', stocks.length, stocks);
+        setTankStocks(stocks);
+
+        // Initialize input values for each fish
+        const initialInputs: Record<string, { quantity: number; gift: number; unitPrice: number }> = {};
+        stocks.forEach((stock) => {
+          const fish = fishes.find((f) => f.id === stock.fishTypeId);
+          console.log(`🐠 Fish for ${stock.fishTypeName}:`, fish);
+          initialInputs[stock.fishTypeId] = {
+            quantity: 1,
+            gift: 0,
+            unitPrice: fish?.unitPrice || 0,
+          };
+        });
+        console.log('💾 Initial inputs:', initialInputs);
+        setFishInputs(initialInputs);
+      } catch (error) {
+        console.error('❌ Tank stocks filtering error:', error);
+        notice({
+          variant: 'error',
+          title: 'Hata',
+          message: 'Tank stokları yüklenirken hata oluştu',
+          buttonTitle: 'Tamam',
+        });
+      } finally {
+        setLoadingStocks(false);
+      }
+    } else {
+      setTankStocks([]);
+      setFishInputs({});
     }
   };
 
-  // Handle quantity change for current item
-  const handleQuantityChange = (quantity: number) => {
-    setCurrentItem({ ...currentItem, quantity });
-  };
+  // Add fish from stock table
+  const handleAddFishFromTable = (fishId: string) => {
+    const stockItem = tankStocks.find((stock) => stock.fishTypeId === fishId);
+    if (!stockItem) return;
 
-  // Handle gift change for current item
-  const handleGiftChange = (gift: number) => {
-    setCurrentItem({ ...currentItem, gift });
-  };
-
-  // Handle unit price change for current item
-  const handleUnitPriceChange = (unitPrice: number) => {
-    setCurrentItem({ ...currentItem, unitPrice });
-  };
-
-  // Add current item to sale items
-  const handleAddItem = () => {
-    if (!currentItem.categoryId || !currentItem.fishId || currentItem.quantity <= 0) {
+    const inputs = fishInputs[fishId];
+    if (!inputs || inputs.quantity <= 0) {
       notice({
         variant: 'error',
         title: 'Hata',
-        message: 'Lütfen kategori, balık ve adet bilgilerini doldurun',
+        message: 'Lütfen adet giriniz',
         buttonTitle: 'Tamam',
       });
       return;
     }
 
-    // Calculate total: (quantity - gift) * unitPrice
-    const total = (currentItem.quantity - currentItem.gift) * currentItem.unitPrice;
-    setSaleItems([...saleItems, { ...currentItem, total }]);
-    setCurrentItem({
-      categoryId: '',
-      fishId: '',
-      quantity: 1,
-      gift: 0,
-      unitPrice: 0,
-      tankId: '',
+    const availableStock = stockItem.quantity;
+    const totalQuantityNeeded = inputs.quantity + inputs.gift; // Toplam stok ihtiyacı (adet + hediye)
+    const paidQuantity = inputs.quantity; // Sadece ödenen miktar
+
+    if (totalQuantityNeeded > availableStock) {
+      notice({
+        variant: 'error',
+        title: 'Yetersiz Stok',
+        message: `Mevcut stok: ${availableStock} adet. Toplam ${totalQuantityNeeded} adet (${inputs.quantity} adet + ${inputs.gift} hediye) için yeterli değil.`,
+        buttonTitle: 'Tamam',
+      });
+      return;
+    }
+
+    const fish = fishes.find((f) => f.id === fishId);
+    if (!fish) return;
+
+    const total = paidQuantity * inputs.unitPrice; // Sadece ödenen miktardan ücret al
+
+    setSaleItems([
+      ...saleItems,
+      {
+        categoryId: fish.categoryId || '',
+        fishId: fishId,
+        quantity: inputs.quantity,
+        gift: inputs.gift,
+        unitPrice: inputs.unitPrice,
+        total: total,
+        tankId: currentItem.tankId,
+      },
+    ]);
+
+    // Reset input values for this fish
+    setFishInputs({
+      ...fishInputs,
+      [fishId]: {
+        quantity: 1,
+        gift: 0,
+        unitPrice: fish.unitPrice,
+      },
     });
-    setFilteredFishes([]);
   };
 
   // Remove item from sale items
@@ -201,6 +261,17 @@ const SalesPage = () => {
   const filterStartDate = filterForm.watch('startDate');
   const filterEndDate = filterForm.watch('endDate');
 
+  // Count active filters
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (filterCustomerId) count++;
+    if (filterCategoryId) count++;
+    if (filterFishId) count++;
+    if (filterStartDate) count++;
+    if (filterEndDate) count++;
+    return count;
+  }, [filterCustomerId, filterCategoryId, filterFishId, filterStartDate, filterEndDate]);
+
   // Filtered sales based on form filters
   const filteredSales = useMemo(() => {
     let filtered = [...sales];
@@ -246,89 +317,69 @@ const SalesPage = () => {
     return filtered;
   }, [sales, filterCustomerId, filterCategoryId, filterFishId, filterStartDate, filterEndDate, fishes]);
 
-  const loadCustomers = async () => {
-    try {
-      const data = await customerService.getAllCustomers();
-      setCustomers(data);
-    } catch (error) {
-      console.error('❌ Customers loading error:', error);
-      notice({
-        variant: 'error',
-        title: 'Hata',
-        message: 'Müşteriler yüklenirken hata oluştu',
-        buttonTitle: 'Tamam',
-      });
-    }
-  };
-
-  const loadCategories = async () => {
-    try {
-      const data = await fishService.getAllCategories();
-      setCategories(data);
-    } catch (error) {
-      console.error('❌ Categories loading error:', error);
-      notice({
-        variant: 'error',
-        title: 'Hata',
-        message: 'Kategoriler yüklenirken hata oluştu',
-        buttonTitle: 'Tamam',
-      });
-    }
-  };
-
-  const loadFishes = async () => {
-    try {
-      const data = await fishService.getAllFishes();
-      setFishes(data);
-    } catch (error) {
-      console.error('❌ Fishes loading error:', error);
-      notice({
-        variant: 'error',
-        title: 'Hata',
-        message: 'Balıklar yüklenirken hata oluştu',
-        buttonTitle: 'Tamam',
-      });
-    }
-  };
-
-  const loadTanks = async () => {
-    try {
-      const data = await tankService.getAllTanks();
-      setTanks(data);
-    } catch (error) {
-      console.error('❌ Tanks loading error:', error);
-    }
-  };
-
-  const loadSales = async () => {
+  const loadData = async () => {
     setLoading(true);
+    console.log('Loading all data...');
     try {
-      const data = await salesService.getAllSales();
-      setSales(data);
+      const [customersData, categoriesData, fishesData, tanksData, salesData, collectionsData, allStocksData] =
+        await Promise.all([
+          customerService.getAllCustomers(),
+          fishService.getAllCategories(),
+          fishService.getAllFishes(),
+          tankService.getAllTanks(),
+          salesService.getAllSales(),
+          collectionService.getAllCollections(),
+          tankService.getAllTankStocks(),
+        ]);
+
+      console.log('Data loaded:', {
+        customers: customersData.length,
+        categories: categoriesData.length,
+        fishes: fishesData.length,
+        tanks: tanksData.length,
+        sales: salesData.length,
+        collections: collectionsData.length,
+        allStocks: allStocksData.length,
+      });
+
+      setCustomers(customersData);
+      setCategories(categoriesData);
+      setFishes(fishesData);
+      setTanks(tanksData);
+      setSales(salesData);
+      setCollections(collectionsData);
+      setAllTankStocks(allStocksData);
     } catch (error) {
-      console.error('❌ Sales loading error:', error);
+      console.error('Error loading data:', error);
       notice({
         variant: 'error',
         title: 'Hata',
-        message: 'Satışlar yüklenirken hata oluştu',
+        message: 'Veriler yüklenirken hata oluştu',
         buttonTitle: 'Tamam',
       });
-      setSales([]);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadCustomers();
-    loadCategories();
-    loadFishes();
-    loadTanks();
-    loadSales();
+    loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleDeleteSale = async (id: string) => {
+    // Check if sale has any collections
+    const saleCollections = collections.filter((c) => c.saleId === id);
+    if (saleCollections.length > 0) {
+      notice({
+        variant: 'error',
+        title: 'İşlem Yapılamaz',
+        message: 'Bu satışta tahsilat bulunmaktadır. Tahsilatı olan satışlar silinemez.',
+        buttonTitle: 'Tamam',
+      });
+      return;
+    }
+
     try {
       setLoading(true);
       await salesService.deleteSale(id);
@@ -340,7 +391,7 @@ const SalesPage = () => {
         buttonTitle: 'Tamam',
       });
 
-      await loadSales();
+      await loadData();
     } catch (error) {
       console.error('❌ Sale delete error:', error);
       notice({
@@ -363,6 +414,8 @@ const SalesPage = () => {
       notes: '',
     });
     setSaleItems([]);
+    setTankStocks([]);
+    setFishInputs({});
     setCurrentItem({
       categoryId: '',
       fishId: '',
@@ -371,12 +424,23 @@ const SalesPage = () => {
       unitPrice: 0,
       tankId: '',
     });
-    setFilteredFishes([]);
     setOpenDialog(true);
   };
 
   const handleEditSale = (sale: Sale) => {
     if (!sale.id) return;
+
+    // Check if sale has any collections
+    const saleCollections = collections.filter((c) => c.saleId === sale.id);
+    if (saleCollections.length > 0) {
+      notice({
+        variant: 'error',
+        title: 'İşlem Yapılamaz',
+        message: 'Bu satışta tahsilat bulunmaktadır. Tahsilatı olan satışlar düzenlenemez.',
+        buttonTitle: 'Tamam',
+      });
+      return;
+    }
 
     // Set editing ID first
     setEditingSaleId(sale.id);
@@ -478,15 +542,15 @@ const SalesPage = () => {
             const tank = tanks.find((t) => t.id === item.tankId);
             const fish = fishes.find((f) => f.id === item.fishId);
             const category = categories.find((c) => c.id === fish?.categoryId);
-            const soldQty = item.quantity - item.gift; // Actual sold quantity (excluding gifts)
+            const totalQty = item.quantity + item.gift; // Toplam miktar (adet + hediye)
 
-            if (tank && fish && soldQty > 0) {
+            if (tank && fish && totalQty > 0) {
               try {
                 // Check if enough stock exists
                 const currentStock = await tankService.checkTankStock(tank.id!, fish.id!);
-                if (currentStock < soldQty) {
+                if (currentStock < totalQty) {
                   console.warn(
-                    `Yetersiz stok: Tank ${tank.name} - ${fish.name}. Mevcut: ${currentStock}, İhtiyaç: ${soldQty}`,
+                    `Yetersiz stok: Tank ${tank.name} - ${fish.name}. Mevcut: ${currentStock}, İhtiyaç: ${totalQty} (${item.quantity} adet + ${item.gift} hediye)`,
                   );
                   // Continue anyway - you might want to show a warning to the user
                 }
@@ -497,7 +561,7 @@ const SalesPage = () => {
                   fish.id!,
                   fish.name,
                   category?.name || '',
-                  -soldQty, // Negative to decrease stock
+                  -totalQty, // Negative to decrease stock (adet + hediye)
                 );
               } catch (stockError) {
                 console.error('Stok güncelleme hatası:', stockError);
@@ -516,7 +580,7 @@ const SalesPage = () => {
       }
 
       setOpenDialog(false);
-      await loadSales();
+      await loadData();
     } catch (error) {
       console.error('❌ Sale save error:', error);
       notice({
@@ -554,22 +618,61 @@ const SalesPage = () => {
           <CircularProgress />
         </Box>
       )}
-      {/* Filter Section */}
-      <Paper sx={{ p: 2, mb: 2 }}>
-        <Form form={filterForm} schema={saleFilterSchemaWithOptions} onSubmit={(e) => e.preventDefault()} />
-        <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 1 }}>
-          <Button
-            variant="outlined"
-            onClick={() =>
-              filterForm.reset({ customerId: '', categoryId: '', fishId: '', startDate: '', endDate: '' })
-            }>
-            Filtreleri Temizle
-          </Button>
-          <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={handleAddSale}>
+
+      {/* Header with Filter and Add buttons */}
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', mb: 3 }}>
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <Badge badgeContent={activeFilterCount} color="primary">
+            <Button
+              variant="outlined"
+              color="primary"
+              startIcon={<FilterListIcon />}
+              onClick={() => setFilterDrawerOpen(true)}
+              size="small">
+              Filtreler
+            </Button>
+          </Badge>
+          {activeFilterCount > 0 && (
+            <Button
+              variant="text"
+              color="error"
+              onClick={() =>
+                filterForm.reset({ customerId: '', categoryId: '', fishId: '', startDate: '', endDate: '' })
+              }
+              size="small">
+              Temizle
+            </Button>
+          )}
+          <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={handleAddSale} size="small">
             Yeni Satış Ekle
           </Button>
         </Box>
-      </Paper>
+      </Box>
+
+      {/* Filter Drawer */}
+      <Drawer anchor="right" open={filterDrawerOpen} onClose={() => setFilterDrawerOpen(false)}>
+        <Box sx={{ width: 400, p: 3 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+              Filtreler
+            </Typography>
+          </Box>
+          <Form form={filterForm} schema={saleFilterSchemaWithOptions} onSubmit={(e) => e.preventDefault()} />
+          <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
+            <Button
+              variant="outlined"
+              onClick={() =>
+                filterForm.reset({ customerId: '', categoryId: '', fishId: '', startDate: '', endDate: '' })
+              }
+              fullWidth>
+              Temizle
+            </Button>
+            <Button variant="contained" onClick={() => setFilterDrawerOpen(false)} fullWidth>
+              Uygula
+            </Button>
+          </Box>
+        </Box>
+      </Drawer>
 
       {/* Sales List - Card Layout */}
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -582,24 +685,56 @@ const SalesPage = () => {
         ) : (
           filteredSales.map((sale) => {
             const isExpanded = expandedRows.has(sale.id || '');
+            // Calculate collection status for this sale
+            const saleCollections = collections.filter((c) => c.saleId === sale.id);
+            const totalCollected = saleCollections.reduce((sum, c) => sum + c.collectedAmount, 0);
+            const remainingAmount = sale.total - totalCollected;
+            const hasCollections = saleCollections.length > 0;
+            const isFullyCollected = remainingAmount <= 0;
+
             return (
               <Card key={sale.id} sx={{ overflow: 'visible' }}>
                 <CardContent>
                   {/* Header Row */}
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
                     <Box sx={{ flex: 1 }}>
-                      <Typography variant="h6" sx={{ fontWeight: 600, mb: 0.5 }}>
-                        {sale.customerName}
-                      </Typography>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                        <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                          {sale.customerName}
+                        </Typography>
+                        {hasCollections && (
+                          <Chip
+                            label={isFullyCollected ? 'Tam Tahsilat' : 'Kısmi Tahsilat'}
+                            size="small"
+                            color={isFullyCollected ? 'success' : 'warning'}
+                            sx={{ fontWeight: 500 }}
+                          />
+                        )}
+                      </Box>
                       <Typography variant="body2" color="text.secondary">
                         {formatDate(sale.date)}
                       </Typography>
+                      {hasCollections && (
+                        <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+                          Tahsil Edilen: {totalCollected.toFixed(2)} ₺ | Kalan: {remainingAmount.toFixed(2)} ₺
+                        </Typography>
+                      )}
                     </Box>
                     <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                      <IconButton size="small" color="primary" onClick={() => handleEditSale(sale)}>
+                      <IconButton
+                        size="small"
+                        color="primary"
+                        onClick={() => handleEditSale(sale)}
+                        disabled={hasCollections}
+                        title={hasCollections ? 'Tahsilatı olan satışlar düzenlenemez' : 'Düzenle'}>
                         <EditIcon fontSize="small" />
                       </IconButton>
-                      <IconButton size="small" color="error" onClick={() => sale.id && handleDeleteSale(sale.id)}>
+                      <IconButton
+                        size="small"
+                        color="error"
+                        onClick={() => sale.id && handleDeleteSale(sale.id)}
+                        disabled={hasCollections}
+                        title={hasCollections ? 'Tahsilatı olan satışlar silinemez' : 'Sil'}>
                         <DeleteIcon fontSize="small" />
                       </IconButton>
                       <IconButton
@@ -717,145 +852,182 @@ const SalesPage = () => {
               Ürünler
             </Typography>
 
-            {/* Add Item Form */}
+            {/* Tank Selection */}
             <Paper sx={{ p: 2, mb: 2, backgroundColor: theme.palette.grey[50] }}>
-              <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 2 }}>
-                {/* Category Select */}
-                <Box>
-                  <Typography variant="caption" sx={{ mb: 0.5, display: 'block' }}>
-                    Kategori
-                  </Typography>
-                  <select
-                    value={currentItem.categoryId}
-                    onChange={(e) => handleCategoryChange(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '8px',
-                      borderRadius: '4px',
-                      border: '1px solid #ccc',
-                    }}>
-                    <option value="">Seçiniz</option>
-                    {categories.map((category) => (
-                      <option key={category.id} value={category.id}>
-                        {category.name}
-                      </option>
-                    ))}
-                  </select>
-                </Box>
-
-                {/* Fish Select */}
-                <Box>
-                  <Typography variant="caption" sx={{ mb: 0.5, display: 'block' }}>
-                    Balık
-                  </Typography>
-                  <select
-                    value={currentItem.fishId}
-                    onChange={(e) => handleFishChange(e.target.value)}
-                    disabled={!currentItem.categoryId}
-                    style={{
-                      width: '100%',
-                      padding: '8px',
-                      borderRadius: '4px',
-                      border: '1px solid #ccc',
-                    }}>
-                    <option value="">Seçiniz</option>
-                    {filteredFishes.map((fish) => (
-                      <option key={fish.id} value={fish.id}>
-                        {fish.name} - {fish.unitPrice.toFixed(2)} ₺
-                      </option>
-                    ))}
-                  </select>
-                </Box>
-
-                {/* Quantity Input */}
-                <Box>
-                  <Typography variant="caption" sx={{ mb: 0.5, display: 'block' }}>
-                    Adet
-                  </Typography>
-                  <input
-                    type="number"
-                    value={currentItem.quantity}
-                    onChange={(e) => handleQuantityChange(Number(e.target.value))}
-                    min="1"
-                    style={{
-                      width: '100%',
-                      padding: '8px',
-                      borderRadius: '4px',
-                      border: '1px solid #ccc',
-                    }}
-                  />
-                </Box>
-
-                {/* Gift Input */}
-                <Box>
-                  <Typography variant="caption" sx={{ mb: 0.5, display: 'block' }}>
-                    Hediye
-                  </Typography>
-                  <input
-                    type="number"
-                    value={currentItem.gift}
-                    onChange={(e) => handleGiftChange(Number(e.target.value))}
-                    min="0"
-                    style={{
-                      width: '100%',
-                      padding: '8px',
-                      borderRadius: '4px',
-                      border: '1px solid #ccc',
-                    }}
-                  />
-                </Box>
-
-                {/* Unit Price (editable) */}
-                <Box>
-                  <Typography variant="caption" sx={{ mb: 0.5, display: 'block' }}>
-                    Birim Fiyat
-                  </Typography>
-                  <input
-                    type="number"
-                    value={currentItem.unitPrice}
-                    onChange={(e) => handleUnitPriceChange(Number(e.target.value))}
-                    min="0"
-                    step="0.01"
-                    style={{
-                      width: '100%',
-                      padding: '8px',
-                      borderRadius: '4px',
-                      border: '1px solid #ccc',
-                    }}
-                  />
-                </Box>
-
-                {/* Tank Selection */}
-                <Box>
-                  <Typography variant="caption" sx={{ mb: 0.5, display: 'block' }}>
-                    Tank (Opsiyonel)
-                  </Typography>
-                  <select
-                    value={currentItem.tankId}
-                    onChange={(e) => setCurrentItem({ ...currentItem, tankId: e.target.value })}
-                    style={{
-                      width: '100%',
-                      padding: '8px',
-                      borderRadius: '4px',
-                      border: '1px solid #ccc',
-                    }}>
-                    <option value="">Seçiniz</option>
-                    {tanks.map((tank) => (
-                      <option key={tank.id} value={tank.id}>
-                        {tank.name} ({tank.code})
-                      </option>
-                    ))}
-                  </select>
-                </Box>
-
-                {/* Add Button */}
-                <Box sx={{ display: 'flex', alignItems: 'flex-end' }}>
-                  <Button variant="contained" color="primary" onClick={handleAddItem} fullWidth>
-                    Ekle
-                  </Button>
-                </Box>
+              <Box>
+                <Typography variant="caption" sx={{ mb: 0.5, display: 'block', fontWeight: 600 }}>
+                  Tank Seçiniz *
+                </Typography>
+                <select
+                  value={currentItem.tankId}
+                  onChange={(e) => handleTankChange(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    borderRadius: '4px',
+                    border: '1px solid #ccc',
+                    fontSize: '14px',
+                  }}>
+                  <option value="">Tank Seçiniz</option>
+                  {tanks.map((tank) => (
+                    <option key={tank.id} value={tank.id}>
+                      {tank.name} ({tank.code})
+                    </option>
+                  ))}
+                </select>
               </Box>
             </Paper>
+
+            {/* Stock Table - Show when tank is selected */}
+            {loadingStocks && (
+              <Paper sx={{ p: 3, textAlign: 'center', backgroundColor: theme.palette.grey[50] }}>
+                <CircularProgress size={30} />
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                  Stoklar yükleniyoy...
+                </Typography>
+              </Paper>
+            )}
+
+            {!loadingStocks && currentItem.tankId && tankStocks.length > 0 && (
+              <Paper sx={{ p: 2, mb: 2 }}>
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                    {tanks.find((t) => t.id === currentItem.tankId)?.name} - Stok Listesi
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Toplam Balık: {tankStocks.reduce((sum, s) => sum + s.quantity, 0)} adet • {tankStocks.length} tür
+                  </Typography>
+                </Box>
+
+                {/* Mobile-friendly List View */}
+                <Stack spacing={2}>
+                  {tankStocks.map((stock) => {
+                    const fish = fishes.find((f) => f.id === stock.fishTypeId);
+                    const inputs = fishInputs[stock.fishTypeId] || {
+                      quantity: 1,
+                      gift: 0,
+                      unitPrice: fish?.unitPrice || 0,
+                    };
+
+                    return (
+                      <Paper
+                        key={stock.id}
+                        sx={{
+                          p: 2,
+                          backgroundColor: theme.palette.grey[50],
+                          border: `1px solid ${theme.palette.grey[200]}`,
+                        }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                          <Box sx={{ flex: 1 }}>
+                            <Typography variant="body1" sx={{ fontWeight: 600, mb: 0.5 }}>
+                              {stock.fishTypeName}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              Stok: {stock.quantity} adet
+                            </Typography>
+                          </Box>
+                        </Box>
+
+                        <Box
+                          sx={{
+                            display: 'flex',
+                            gap: 1,
+                            mb: 1,
+                          }}>
+                          <Box>
+                            <Typography variant="caption" sx={{ mb: 0.5, display: 'block', fontWeight: 500 }}>
+                              Adet
+                            </Typography>
+                            <input
+                              type="number"
+                              value={inputs.quantity}
+                              onChange={(e) =>
+                                setFishInputs({
+                                  ...fishInputs,
+                                  [stock.fishTypeId]: { ...inputs, quantity: Number(e.target.value) },
+                                })
+                              }
+                              min="1"
+                              style={{
+                                width: '100%',
+                                padding: '10px',
+                                borderRadius: '4px',
+                                border: '1px solid #ccc',
+                                fontSize: '14px',
+                              }}
+                            />
+                          </Box>
+                          <Box>
+                            <Typography variant="caption" sx={{ mb: 0.5, display: 'block', fontWeight: 500 }}>
+                              Hediye
+                            </Typography>
+                            <input
+                              type="number"
+                              value={inputs.gift}
+                              onChange={(e) =>
+                                setFishInputs({
+                                  ...fishInputs,
+                                  [stock.fishTypeId]: { ...inputs, gift: Number(e.target.value) },
+                                })
+                              }
+                              min="0"
+                              style={{
+                                width: '100%',
+                                padding: '10px',
+                                borderRadius: '4px',
+                                border: '1px solid #ccc',
+                                fontSize: '14px',
+                              }}
+                            />
+                          </Box>
+                          <Box>
+                            <Typography variant="caption" sx={{ mb: 0.5, display: 'block', fontWeight: 500 }}>
+                              Fiyat
+                            </Typography>
+                            <input
+                              type="number"
+                              value={inputs.unitPrice}
+                              onChange={(e) =>
+                                setFishInputs({
+                                  ...fishInputs,
+                                  [stock.fishTypeId]: { ...inputs, unitPrice: Number(e.target.value) },
+                                })
+                              }
+                              min="0"
+                              step="0.01"
+                              style={{
+                                width: '100%',
+                                padding: '10px',
+                                borderRadius: '4px',
+                                border: '1px solid #ccc',
+                                fontSize: '14px',
+                              }}
+                            />
+                          </Box>
+                        </Box>
+
+                        <Button
+                          fullWidth
+                          variant="contained"
+                          color="primary"
+                          size="small"
+                          startIcon={<AddIcon />}
+                          onClick={() => handleAddFishFromTable(stock.fishTypeId)}>
+                          Sepete Ekle
+                        </Button>
+                      </Paper>
+                    );
+                  })}
+                </Stack>
+              </Paper>
+            )}
+
+            {/* Show message when tank is selected but no stock */}
+            {!loadingStocks && currentItem.tankId && tankStocks.length === 0 && (
+              <Paper sx={{ p: 3, textAlign: 'center', backgroundColor: theme.palette.grey[50] }}>
+                <Typography color="text.secondary">Bu tankta henüz stok bulunmamaktadır</Typography>
+              </Paper>
+            )}
 
             {/* Items List - Card Layout */}
             {saleItems.length > 0 && (

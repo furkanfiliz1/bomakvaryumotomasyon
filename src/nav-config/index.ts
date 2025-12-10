@@ -13,16 +13,24 @@ import { collectionsNavConfig } from 'src/pages/Collections/collections.nav-conf
 
 export default [
   ...dashboardNavConfig,
+  ...salesNavConfig,
+  ...collectionsNavConfig,
+  ...tanksNavConfig,
+
+  ...purchasesNavConfig,
+  ...expensesNavConfig,
+  ...cashNavConfig,
+
+ {
+    title: 'Tank',
+    breadcrumbTitle: 'Tank',
+    path: '/tanks',
+    icon: 'database-01',
+  },
   ...fishNavConfig,
   ...customersNavConfig,
-  ...salesNavConfig,
-  ...purchasesNavConfig,
-  ...tanksNavConfig,
-  ...expensesNavConfig,
+
   ...usersNavConfig,
-  ...cashNavConfig,
-  ...collectionsNavConfig,
- 
 
   {
     icon: 'face-sad',

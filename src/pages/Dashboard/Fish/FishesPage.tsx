@@ -16,9 +16,18 @@ import {
   useTheme,
   CircularProgress,
   IconButton,
+  Stack,
+  Card,
+  CardContent,
+  Grid,
+  Divider,
+  Chip,
+  Badge,
+  Drawer,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import FilterListIcon from '@mui/icons-material/FilterList';
 import { useState, useEffect, useMemo } from 'react';
 import { Form, useNotice } from '@components';
 import { db } from '../../../config/firebase';
@@ -26,6 +35,7 @@ import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc } from 'firebase
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import { createFishSpeciesSchema, createFishFilterSchema, FishSpeciesFormData } from './fish.validation';
+import useResponsive from '../../../hooks/useResponsive';
 
 interface FishCategory {
   id?: string;
@@ -45,6 +55,7 @@ interface Fish {
 const FishesPage = () => {
   const theme = useTheme();
   const notice = useNotice();
+  const isMobile = useResponsive('down', 'sm') ?? false;
 
   const [categories, setCategories] = useState<FishCategory[]>([]);
   const [fishes, setFishes] = useState<Fish[]>([]);
@@ -53,6 +64,7 @@ const FishesPage = () => {
   // Fish Dialog
   const [openFishDialog, setOpenFishDialog] = useState(false);
   const [editingFishId, setEditingFishId] = useState<string | null>(null);
+  const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
 
   // Create schema with current categories
   const fishSpeciesSchema = createFishSpeciesSchema(categories);
@@ -80,6 +92,14 @@ const FishesPage = () => {
 
   const filterName = filterForm.watch('name');
   const filterCategoryId = filterForm.watch('categoryId');
+
+  // Count active filters
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (filterName) count++;
+    if (filterCategoryId) count++;
+    return count;
+  }, [filterName, filterCategoryId]);
 
   // Filtered fishes based on form filters
   const filteredFishes = useMemo(() => {
@@ -320,7 +340,7 @@ const FishesPage = () => {
   };
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box sx={{ p: { xs: 2, sm: 3 } }}>
       {loading && (
         <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
           <CircularProgress />
@@ -330,71 +350,170 @@ const FishesPage = () => {
       {/* Fishes Section */}
       <Box>
         {categories.length === 0 && (
-          <Paper sx={{ p: 2, mb: 2, bgcolor: theme.palette.warning[100] }}>
-            <Typography color={theme.palette.warning[800]}>
+          <Paper sx={{ p: { xs: 1.5, sm: 2 }, mb: 2, bgcolor: theme.palette.warning[100] }}>
+            <Typography color={theme.palette.warning[800]} sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
               Balık eklemeden önce kategori oluşturmanız gerekmektedir.
             </Typography>
           </Paper>
         )}
 
-        {/* Filter Form */}
+        {/* Buttons Section */}
         {categories.length > 0 && (
-          <Paper sx={{ p: 2, mb: 2 }}>
-            <Form form={filterForm} schema={fishFilterSchema} onSubmit={(e) => e.preventDefault()} />
-            <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 1 }}>
-              <Button variant="outlined" onClick={() => filterForm.reset({ name: '', categoryId: '' })}>
-                Temizle
-              </Button>
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', mb: 3 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
+              <Badge badgeContent={activeFilterCount} color="primary">
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  startIcon={<FilterListIcon />}
+                  onClick={() => setFilterDrawerOpen(true)}
+                  size="small">
+                  Filtreler
+                </Button>
+              </Badge>
+              {activeFilterCount > 0 && (
+                <Button
+                  variant="text"
+                  color="error"
+                  onClick={() => filterForm.reset({ name: '', categoryId: '' })}
+                  size="small">
+                  Temizle
+                </Button>
+              )}
               <Button
                 variant="contained"
+                color="primary"
                 onClick={() => setOpenFishDialog(true)}
                 disabled={categories.length === 0}
+                size="small"
                 sx={{ background: theme.palette.error[700], '&:hover': { background: theme.palette.error[800] } }}>
-                Balık Ekle
+                Yeni Balık Ekle
               </Button>
             </Box>
-          </Paper>
+          </Box>
         )}
 
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead sx={{ backgroundColor: theme.palette.grey[100] }}>
-              <TableRow>
-                <TableCell sx={{ fontWeight: 600 }}>Balık Adı</TableCell>
-                <TableCell sx={{ fontWeight: 600 }}>Kategori</TableCell>
-                <TableCell sx={{ fontWeight: 600 }} align="right">
-                  İşlemler
-                </TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {filteredFishes.length === 0 ? (
+        {/* Filter Drawer */}
+        <Drawer anchor="right" open={filterDrawerOpen} onClose={() => setFilterDrawerOpen(false)}>
+          <Box sx={{ width: 400, p: 3 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+              <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                Filtreler
+              </Typography>
+            </Box>
+            <Form form={filterForm} schema={fishFilterSchema} onSubmit={(e) => e.preventDefault()} />
+            <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
+              <Button variant="outlined" onClick={() => filterForm.reset({ name: '', categoryId: '' })} fullWidth>
+                Temizle
+              </Button>
+              <Button variant="contained" onClick={() => setFilterDrawerOpen(false)} fullWidth>
+                Uygula
+              </Button>
+            </Box>
+          </Box>
+        </Drawer>
+
+        {isMobile ? (
+          <Stack spacing={2}>
+            {filteredFishes.length === 0 ? (
+              <Paper sx={{ p: 3 }}>
+                <Typography color="text.secondary" align="center">
+                  {fishes.length === 0 ? 'Henüz balık eklenmemiştir' : 'Filtreye uygun balık bulunamadı'}
+                </Typography>
+              </Paper>
+            ) : (
+              filteredFishes.map((fish) => (
+                <Card key={fish.id} variant="outlined">
+                  <CardContent>
+                    <Grid container spacing={2}>
+                      <Grid item xs={12}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Typography variant="subtitle2" color="text.secondary">
+                            Balık Adı
+                          </Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                            {fish.name}
+                          </Typography>
+                        </Box>
+                      </Grid>
+                      <Grid item xs={12}>
+                        <Divider />
+                      </Grid>
+                      <Grid item xs={12}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Typography variant="subtitle2" color="text.secondary">
+                            Kategori
+                          </Typography>
+                          <Chip label={fish.categoryName || 'Bilinmiyor'} size="small" color="primary" />
+                        </Box>
+                      </Grid>
+                      <Grid item xs={12}>
+                        <Stack direction="row" spacing={1}>
+                          <Button
+                            fullWidth
+                            variant="outlined"
+                            color="primary"
+                            startIcon={<EditIcon />}
+                            onClick={() => handleEditFish(fish)}>
+                            Düzenle
+                          </Button>
+                          <Button
+                            fullWidth
+                            variant="outlined"
+                            color="error"
+                            startIcon={<DeleteIcon />}
+                            onClick={() => fish.id && handleDeleteFish(fish.id)}>
+                            Sil
+                          </Button>
+                        </Stack>
+                      </Grid>
+                    </Grid>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </Stack>
+        ) : (
+          <TableContainer component={Paper}>
+            <Table>
+              <TableHead sx={{ backgroundColor: theme.palette.grey[100] }}>
                 <TableRow>
-                  <TableCell colSpan={3} sx={{ textAlign: 'center', py: 3 }}>
-                    <Typography color={theme.palette.grey[600]}>
-                      {fishes.length === 0 ? 'Henüz balık eklenmemiştir' : 'Filtreye uygun balık bulunamadı'}
-                    </Typography>
+                  <TableCell sx={{ fontWeight: 600 }}>Balık Adı</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Kategori</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }} align="right">
+                    İşlemler
                   </TableCell>
                 </TableRow>
-              ) : (
-                filteredFishes.map((fish) => (
-                  <TableRow key={fish.id}>
-                    <TableCell>{fish.name}</TableCell>
-                    <TableCell>{fish.categoryName || 'Bilinmiyor'}</TableCell>
-                    <TableCell align="right">
-                      <IconButton size="small" color="primary" onClick={() => handleEditFish(fish)} sx={{ mr: 1 }}>
-                        <EditIcon fontSize="small" />
-                      </IconButton>
-                      <IconButton size="small" color="error" onClick={() => fish.id && handleDeleteFish(fish.id)}>
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
+              </TableHead>
+              <TableBody>
+                {filteredFishes.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={3} sx={{ textAlign: 'center', py: 3 }}>
+                      <Typography color={theme.palette.grey[600]}>
+                        {fishes.length === 0 ? 'Henüz balık eklenmemiştir' : 'Filtreye uygun balık bulunamadı'}
+                      </Typography>
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
+                ) : (
+                  filteredFishes.map((fish) => (
+                    <TableRow key={fish.id}>
+                      <TableCell>{fish.name}</TableCell>
+                      <TableCell>{fish.categoryName || 'Bilinmiyor'}</TableCell>
+                      <TableCell align="right">
+                        <IconButton size="small" color="primary" onClick={() => handleEditFish(fish)} sx={{ mr: 1 }}>
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                        <IconButton size="small" color="error" onClick={() => fish.id && handleDeleteFish(fish.id)}>
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
       </Box>
 
       {/* Add/Edit Fish Dialog */}
@@ -407,7 +526,8 @@ const FishesPage = () => {
           editFishForm.reset();
         }}
         maxWidth="sm"
-        fullWidth>
+        fullWidth
+        fullScreen={isMobile}>
         <DialogTitle sx={{ fontWeight: 600, color: theme.palette.dark[800] }}>
           {editingFishId ? 'Balık Güncelle' : 'Yeni Balık Ekle'}
         </DialogTitle>

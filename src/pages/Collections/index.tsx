@@ -5,12 +5,6 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Paper,
   Typography,
   useTheme,
@@ -18,18 +12,20 @@ import {
   TextField,
   Grid,
   Card,
-  CardContent,
   Chip,
-  IconButton,
+  Drawer,
+  Badge,
 } from '@mui/material';
 import PaymentIcon from '@mui/icons-material/Payment';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import { useState, useEffect } from 'react';
+import FilterListIcon from '@mui/icons-material/FilterList';
+import { useState, useEffect, useMemo } from 'react';
 import { useNotice } from '@components';
 import { collectionService } from '../../services/collectionService';
 import { salesService } from '../../services/salesService';
 import { Collection } from '../../types/collection';
 import { Sale } from '../../types/sale';
+import { currencyFormatter } from '@utils';
 
 interface SaleWithCollection extends Sale {
   totalCollected: number;
@@ -47,6 +43,10 @@ const CollectionsPage = () => {
   const [selectedSale, setSelectedSale] = useState<SaleWithCollection | null>(null);
   const [collectionAmount, setCollectionAmount] = useState<number>(0);
   const [collectionNotes, setCollectionNotes] = useState<string>('');
+  const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
+  const [filterCustomerName, setFilterCustomerName] = useState<string>('');
+  const [filterStartDate, setFilterStartDate] = useState<string>('');
+  const [filterEndDate, setFilterEndDate] = useState<string>('');
 
   const loadData = async () => {
     setLoading(true);
@@ -165,6 +165,43 @@ const CollectionsPage = () => {
   const totalCollected = collections.reduce((sum, c) => sum + c.collectedAmount, 0);
   const totalReceivables = salesWithCollections.reduce((sum, s) => sum + s.remainingAmount, 0);
 
+  // Filtered sales with collections
+  const filteredSalesWithCollections = useMemo(() => {
+    let filtered = [...salesWithCollections];
+
+    // Filter by customer name
+    if (filterCustomerName) {
+      filtered = filtered.filter((sale) => sale.customerName.toLowerCase().includes(filterCustomerName.toLowerCase()));
+    }
+
+    // Filter by start date
+    if (filterStartDate) {
+      filtered = filtered.filter((sale) => {
+        const saleDate = sale.date.toDate();
+        return saleDate >= new Date(filterStartDate);
+      });
+    }
+
+    // Filter by end date
+    if (filterEndDate) {
+      filtered = filtered.filter((sale) => {
+        const saleDate = sale.date.toDate();
+        return saleDate <= new Date(filterEndDate);
+      });
+    }
+
+    return filtered;
+  }, [salesWithCollections, filterCustomerName, filterStartDate, filterEndDate]);
+
+  // Count active filters
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (filterCustomerName) count++;
+    if (filterStartDate) count++;
+    if (filterEndDate) count++;
+    return count;
+  }, [filterCustomerName, filterStartDate, filterEndDate]);
+
   return (
     <Box sx={{ p: 3 }}>
       {loading && (
@@ -177,32 +214,106 @@ const CollectionsPage = () => {
         <Typography variant="h4" sx={{ fontWeight: 600, color: theme.palette.dark[800] }}>
           Tahsilatlar
         </Typography>
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <Badge badgeContent={activeFilterCount} color="primary">
+            <Button
+              variant="outlined"
+              color="primary"
+              startIcon={<FilterListIcon />}
+              onClick={() => setFilterDrawerOpen(true)}
+              size="small">
+              Filtreler
+            </Button>
+          </Badge>
+          {activeFilterCount > 0 && (
+            <Button
+              variant="text"
+              color="error"
+              onClick={() => {
+                setFilterCustomerName('');
+                setFilterStartDate('');
+                setFilterEndDate('');
+              }}
+              size="small">
+              Temizle
+            </Button>
+          )}
+        </Box>
       </Box>
+
+      {/* Filter Drawer */}
+      <Drawer anchor="right" open={filterDrawerOpen} onClose={() => setFilterDrawerOpen(false)}>
+        <Box sx={{ width: 400, p: 3 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+              Filtreler
+            </Typography>
+          </Box>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <TextField
+              label="Müşteri Adı"
+              value={filterCustomerName}
+              onChange={(e) => setFilterCustomerName(e.target.value)}
+              fullWidth
+              size="small"
+            />
+            <TextField
+              label="Başlangıç Tarihi"
+              type="date"
+              value={filterStartDate}
+              onChange={(e) => setFilterStartDate(e.target.value)}
+              fullWidth
+              size="small"
+              InputLabelProps={{ shrink: true }}
+            />
+            <TextField
+              label="Bitiş Tarihi"
+              type="date"
+              value={filterEndDate}
+              onChange={(e) => setFilterEndDate(e.target.value)}
+              fullWidth
+              size="small"
+              InputLabelProps={{ shrink: true }}
+            />
+          </Box>
+          <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
+            <Button
+              variant="outlined"
+              onClick={() => {
+                setFilterCustomerName('');
+                setFilterStartDate('');
+                setFilterEndDate('');
+              }}
+              fullWidth>
+              Temizle
+            </Button>
+            <Button variant="contained" onClick={() => setFilterDrawerOpen(false)} fullWidth>
+              Uygula
+            </Button>
+          </Box>
+        </Box>
+      </Drawer>
 
       {/* İstatistik Kartları */}
       <Grid container spacing={2} sx={{ mb: 3 }}>
         <Grid item xs={12} md={4}>
-          <Card sx={{ background: theme.palette.success.light }}>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Toplam Tahsilat
-              </Typography>
-              <Typography variant="h4" sx={{ fontWeight: 600 }}>
-                ₺{totalCollected.toFixed(2)}
-              </Typography>
-            </CardContent>
+          <Card sx={{ background: theme.palette.success.light, p: 2 }}>
+            <Typography variant="h6" gutterBottom>
+              Toplam Tahsilat
+            </Typography>
+            <Typography variant="h4" sx={{ fontWeight: 600 }}>
+              ₺{totalCollected.toFixed(2)}
+            </Typography>
           </Card>
         </Grid>
         <Grid item xs={12} md={4}>
-          <Card sx={{ background: theme.palette.warning.light }}>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Toplam Alacak
-              </Typography>
-              <Typography variant="h4" sx={{ fontWeight: 600 }}>
-                ₺{totalReceivables.toFixed(2)}
-              </Typography>
-            </CardContent>
+          <Card sx={{ background: theme.palette.warning.light, p: 2 }}>
+            <Typography variant="h6" gutterBottom>
+              Toplam Alacak
+            </Typography>
+            <Typography variant="h4" sx={{ fontWeight: 600 }}>
+              {currencyFormatter(totalReceivables, 'TRY')}
+            </Typography>
           </Card>
         </Grid>
       </Grid>
@@ -211,101 +322,132 @@ const CollectionsPage = () => {
       <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
         Alacaklar
       </Typography>
-      <TableContainer component={Paper} sx={{ mb: 3 }}>
-        <Table>
-          <TableHead sx={{ backgroundColor: theme.palette.grey[100] }}>
-            <TableRow>
-              <TableCell sx={{ fontWeight: 600 }}>Müşteri</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>Satış Tarihi</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>Toplam Tutar</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>Tahsil Edilen</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>Kalan</TableCell>
-              <TableCell sx={{ fontWeight: 600 }} align="right">
-                İşlemler
-              </TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {salesWithCollections.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} sx={{ textAlign: 'center', py: 3 }}>
-                  <Typography color={theme.palette.grey[600]}>Alacak bulunmamaktadır</Typography>
-                </TableCell>
-              </TableRow>
-            ) : (
-              salesWithCollections.map((sale) => (
-                <TableRow key={sale.id}>
-                  <TableCell>{sale.customerName}</TableCell>
-                  <TableCell>{new Date(sale.date.toDate()).toLocaleDateString('tr-TR')}</TableCell>
-                  <TableCell>₺{sale.total.toFixed(2)}</TableCell>
-                  <TableCell>
-                    <Chip label={`₺${sale.totalCollected.toFixed(2)}`} color="info" size="small" />
-                  </TableCell>
-                  <TableCell>
-                    <Chip label={`₺${sale.remainingAmount.toFixed(2)}`} color="warning" size="small" />
-                  </TableCell>
-                  <TableCell align="right">
-                    <IconButton
-                      size="small"
-                      color="primary"
-                      onClick={() => handleOpenPartialPayment(sale)}
-                      sx={{ mr: 1 }}
-                      title="Kısmi Tahsilat">
-                      <PaymentIcon fontSize="small" />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      color="success"
-                      onClick={() => handleOpenFullPayment(sale)}
-                      title="Tümünü Tahsil Et">
-                      <CheckCircleIcon fontSize="small" />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
+
+      {filteredSalesWithCollections.length === 0 ? (
+        <Paper sx={{ p: 3, textAlign: 'center', mb: 3 }}>
+          <Typography color={theme.palette.grey[600]}>
+            {salesWithCollections.length === 0 ? 'Alacak bulunmamaktadır' : 'Filtreye uygun alacak bulunamadı'}
+          </Typography>
+        </Paper>
+      ) : (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mb: 3 }}>
+          {filteredSalesWithCollections.map((sale) => (
+            <Paper
+              key={sale.id}
+              sx={{
+                p: 2,
+                border: `1px solid ${theme.palette.grey[200]}`,
+              }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                <Box sx={{ flex: 1 }}>
+                  <Typography variant="h6" sx={{ fontWeight: 600, mb: 0.5 }}>
+                    {sale.customerName}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Satış Tarihi: {new Date(sale.date.toDate()).toLocaleDateString('tr-TR')}
+                  </Typography>
+                </Box>
+              </Box>
+
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)' }, gap: 2, mb: 2 }}>
+                <Box>
+                  <Typography variant="caption" color="text.secondary" display="block">
+                    Toplam Tutar
+                  </Typography>
+                  <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                    ₺{sale.total.toFixed(2)}
+                  </Typography>
+                </Box>
+                <Box>
+                  <Typography variant="caption" color="text.secondary" display="block">
+                    Tahsil Edilen
+                  </Typography>
+                  <Chip label={`₺${sale.totalCollected.toFixed(2)}`} color="info" size="small" />
+                </Box>
+                <Box>
+                  <Typography variant="caption" color="text.secondary" display="block">
+                    Kalan
+                  </Typography>
+                  <Chip label={`₺${sale.remainingAmount.toFixed(2)}`} color="warning" size="small" />
+                </Box>
+              </Box>
+
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  color="primary"
+                  startIcon={<PaymentIcon />}
+                  onClick={() => handleOpenPartialPayment(sale)}
+                  sx={{ py: 1 }}>
+                  Kısmi Tahsilat
+                </Button>
+                <Button
+                  fullWidth
+                  variant="contained"
+                  color="success"
+                  startIcon={<CheckCircleIcon />}
+                  onClick={() => handleOpenFullPayment(sale)}
+                  sx={{ py: 1 }}>
+                  Tümünü Tahsil Et
+                </Button>
+              </Box>
+            </Paper>
+          ))}
+        </Box>
+      )}
 
       {/* Tahsilat Geçmişi */}
       <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
         Tahsilat Geçmişi
       </Typography>
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead sx={{ backgroundColor: theme.palette.grey[100] }}>
-            <TableRow>
-              <TableCell sx={{ fontWeight: 600 }}>Müşteri</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>Satış Toplamı</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>Tahsilat Tutarı</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>Tarih</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>Not</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {collections.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5} sx={{ textAlign: 'center', py: 3 }}>
-                  <Typography color={theme.palette.grey[600]}>Henüz tahsilat kaydı bulunmamaktadır</Typography>
-                </TableCell>
-              </TableRow>
-            ) : (
-              collections.map((collection) => (
-                <TableRow key={collection.id}>
-                  <TableCell>{collection.customerName}</TableCell>
-                  <TableCell>₺{collection.saleTotal.toFixed(2)}</TableCell>
-                  <TableCell>
-                    <Chip label={`₺${collection.collectedAmount.toFixed(2)}`} color="success" size="small" />
-                  </TableCell>
-                  <TableCell>{collection.date ? new Date(collection.date).toLocaleDateString('tr-TR') : '-'}</TableCell>
-                  <TableCell>{collection.notes || '-'}</TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
+
+      {collections.length === 0 ? (
+        <Paper sx={{ p: 3, textAlign: 'center' }}>
+          <Typography color={theme.palette.grey[600]}>Henüz tahsilat kaydı bulunmamaktadır</Typography>
+        </Paper>
+      ) : (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          {collections.map((collection) => (
+            <Paper
+              key={collection.id}
+              sx={{
+                p: 2,
+                backgroundColor: theme.palette.grey[50],
+                border: `1px solid ${theme.palette.grey[200]}`,
+              }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                <Box sx={{ flex: 1 }}>
+                  <Typography variant="body1" sx={{ fontWeight: 600, mb: 0.5 }}>
+                    {collection.customerName}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {collection.date ? new Date(collection.date).toLocaleDateString('tr-TR') : '-'}
+                  </Typography>
+                </Box>
+                <Chip label={`₺${collection.collectedAmount.toFixed(2)}`} color="success" size="small" />
+              </Box>
+
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' }, gap: 2 }}>
+                <Box>
+                  <Typography variant="caption" color="text.secondary" display="block">
+                    Satış Toplamı
+                  </Typography>
+                  <Typography variant="body2">₺{collection.saleTotal.toFixed(2)}</Typography>
+                </Box>
+                {collection.notes && (
+                  <Box>
+                    <Typography variant="caption" color="text.secondary" display="block">
+                      Not
+                    </Typography>
+                    <Typography variant="body2">{collection.notes}</Typography>
+                  </Box>
+                )}
+              </Box>
+            </Paper>
+          ))}
+        </Box>
+      )}
 
       {/* Tahsilat Dialog */}
       <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>

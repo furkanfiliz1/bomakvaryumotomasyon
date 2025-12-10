@@ -11,11 +11,14 @@ import {
   CircularProgress,
   Stack,
   Collapse,
+  Drawer,
+  Badge,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import FilterListIcon from '@mui/icons-material/FilterList';
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -52,6 +55,7 @@ const PurchasesPage = () => {
   const [openDialog, setOpenDialog] = useState(false);
   const [editingPurchaseId, setEditingPurchaseId] = useState<string | null>(null);
   const [expandedPurchaseId, setExpandedPurchaseId] = useState<string | null>(null);
+  const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
 
   // Items state
   const [purchaseItems, setPurchaseItems] = useState<
@@ -117,6 +121,16 @@ const PurchasesPage = () => {
   const filterFishTypeId = filterForm.watch('fishTypeId');
   const filterStartDate = filterForm.watch('startDate');
   const filterEndDate = filterForm.watch('endDate');
+
+  // Count active filters
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (filterCategoryId) count++;
+    if (filterFishTypeId) count++;
+    if (filterStartDate) count++;
+    if (filterEndDate) count++;
+    return count;
+  }, [filterCategoryId, filterFishTypeId, filterStartDate, filterEndDate]);
 
   // Filtered purchases based on form filters
   const filteredPurchases = useMemo(() => {
@@ -451,31 +465,56 @@ const PurchasesPage = () => {
   };
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" sx={{ fontWeight: 600 }}>
-          Balık Alışlar
-        </Typography>
-        <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={handleOpenDialog}>
-          Yeni Alış Ekle
-        </Button>
-      </Box>
-
-      {/* Filter Form */}
-      <Paper sx={{ p: 2, mb: 2 }}>
-        <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-          Filtrele
-        </Typography>
-        <Form form={filterForm} schema={purchaseFilterSchemaWithOptions} onSubmit={(e) => e.preventDefault()} />
-        <Box sx={{ mt: 2 }}>
-          <Button
-            variant="outlined"
-            onClick={() => filterForm.reset({ categoryId: '', fishTypeId: '', startDate: '', endDate: '' })}
-            size="small">
-            Filtreleri Temizle
+    <Box sx={{ p: 2 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', mb: 3 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
+          <Badge badgeContent={activeFilterCount} color="primary">
+            <Button
+              variant="outlined"
+              color="primary"
+              startIcon={<FilterListIcon />}
+              onClick={() => setFilterDrawerOpen(true)}
+              size="small">
+              Filtreler
+            </Button>
+          </Badge>
+          {activeFilterCount > 0 && (
+            <Button
+              variant="text"
+              color="error"
+              onClick={() => filterForm.reset({ categoryId: '', fishTypeId: '', startDate: '', endDate: '' })}
+              size="small">
+              Temizle
+            </Button>
+          )}
+          <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={handleOpenDialog} size="small">
+            Yeni Alış Ekle
           </Button>
         </Box>
-      </Paper>
+      </Box>
+
+      {/* Filter Drawer */}
+      <Drawer anchor="right" open={filterDrawerOpen} onClose={() => setFilterDrawerOpen(false)}>
+        <Box sx={{ width: 400, p: 3 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+              Filtreler
+            </Typography>
+          </Box>
+          <Form form={filterForm} schema={purchaseFilterSchemaWithOptions} onSubmit={(e) => e.preventDefault()} />
+          <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
+            <Button
+              variant="outlined"
+              onClick={() => filterForm.reset({ categoryId: '', fishTypeId: '', startDate: '', endDate: '' })}
+              fullWidth>
+              Temizle
+            </Button>
+            <Button variant="contained" onClick={() => setFilterDrawerOpen(false)} fullWidth>
+              Uygula
+            </Button>
+          </Box>
+        </Box>
+      </Drawer>
 
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>

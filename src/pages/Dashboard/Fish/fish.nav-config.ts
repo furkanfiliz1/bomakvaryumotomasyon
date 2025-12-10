@@ -1,22 +1,15 @@
 export const fishNavConfig = [
-  {
-    title: 'Balıklar',
-    breadcrumbTitle: 'Balıklar',
-    path: '/fish',
-    icon: 'droplets-01',
-    children: [
+  
       {
-        title: 'Kategoriler',
+        title: 'Balık Kategoriler',
         breadcrumbTitle: 'Balık Kategorileri',
         path: '/fish/categories',
         icon: 'grid-01',
       },
       {
-        title: 'Türler',
+        title: 'Balık Türleri',
         breadcrumbTitle: 'Balık Türleri',
         path: '/fish/species',
         icon: 'layers-two-01',
       },
-    ],
-  },
 ];

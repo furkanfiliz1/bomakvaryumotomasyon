@@ -17,9 +17,17 @@ import {
   CircularProgress,
   IconButton,
   Chip,
+  Drawer,
+  Badge,
+  Stack,
+  Card,
+  CardContent,
+  Grid,
+  Divider,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import FilterListIcon from '@mui/icons-material/FilterList';
 import { useState, useEffect, useMemo } from 'react';
 import { Form, useNotice } from '@components';
 import { useForm } from 'react-hook-form';
@@ -29,16 +37,19 @@ import { expenseService } from '../../services/expenseService';
 import { Expense } from '../../types/expense';
 import { userService } from '../../services/userService';
 import { User } from '../../types/user';
+import useResponsive from '../../hooks/useResponsive';
 
 const ExpensesPage = () => {
   const theme = useTheme();
   const notice = useNotice();
+  const isMobile = useResponsive('down', 'sm') ?? false;
 
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
   const [openDialog, setOpenDialog] = useState(false);
   const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
+  const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
 
   // Load users
   useEffect(() => {
@@ -78,6 +89,17 @@ const ExpensesPage = () => {
   const filterUserId = filterForm.watch('userId');
   const filterStartDate = filterForm.watch('startDate');
   const filterEndDate = filterForm.watch('endDate');
+
+  // Count active filters
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (filterCategory) count++;
+    if (filterPaymentType) count++;
+    if (filterUserId) count++;
+    if (filterStartDate) count++;
+    if (filterEndDate) count++;
+    return count;
+  }, [filterCategory, filterPaymentType, filterUserId, filterStartDate, filterEndDate]);
 
   // Filtered expenses based on form filters
   const filteredExpenses = useMemo(() => {
@@ -330,101 +352,249 @@ const ExpensesPage = () => {
   };
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box sx={{ p: { xs: 2, sm: 3 } }}>
       {loading && (
         <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
           <CircularProgress />
         </Box>
       )}
 
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography variant="h4" sx={{ fontWeight: 600, color: theme.palette.dark[800] }}>
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', sm: 'row' },
+          justifyContent: 'space-between',
+          alignItems: { xs: 'stretch', sm: 'center' },
+          gap: 2,
+          mb: 2,
+        }}>
+        <Typography variant={isMobile ? 'h5' : 'h4'} sx={{ fontWeight: 600, color: theme.palette.dark[800] }}>
           Giderler
         </Typography>
-        <Button
-          variant="contained"
-          onClick={() => setOpenDialog(true)}
-          sx={{ background: theme.palette.error[700], '&:hover': { background: theme.palette.error[800] } }}>
-          Yeni Gider Ekle
-        </Button>
+        <Stack direction={isMobile ? 'column' : 'row'} spacing={1} sx={{ width: { xs: '100%', sm: 'auto' } }}>
+          <Badge badgeContent={activeFilterCount} color="primary">
+            <Button
+              variant="outlined"
+              color="primary"
+              startIcon={<FilterListIcon />}
+              onClick={() => setFilterDrawerOpen(true)}
+              size="small"
+              fullWidth={isMobile}>
+              Filtreler
+            </Button>
+          </Badge>
+          {activeFilterCount > 0 && (
+            <Button
+              variant="text"
+              color="error"
+              onClick={() =>
+                filterForm.reset({ category: '', paymentType: '', userId: '', startDate: '', endDate: '' })
+              }
+              size="small"
+              fullWidth={isMobile}>
+              Temizle
+            </Button>
+          )}
+          <Button
+            variant="contained"
+            onClick={() => setOpenDialog(true)}
+            size="small"
+            fullWidth={isMobile}
+            sx={{ background: theme.palette.error[700], '&:hover': { background: theme.palette.error[800] } }}>
+            Yeni Gider Ekle
+          </Button>
+        </Stack>
       </Box>
 
-      {/* Filter Form */}
-      <Paper sx={{ p: 2, mb: 2 }}>
-        <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-          Filtrele
-        </Typography>
-        <Form form={filterForm} schema={expenseFilterSchema} onSubmit={(e) => e.preventDefault()} />
-        <Box sx={{ mt: 2 }}>
-          <Button
-            variant="outlined"
-            onClick={() => filterForm.reset({ category: '', paymentType: '', userId: '', startDate: '', endDate: '' })}
-            size="small">
-            Filtreleri Temizle
-          </Button>
+      {/* Filter Drawer */}
+      <Drawer anchor="right" open={filterDrawerOpen} onClose={() => setFilterDrawerOpen(false)}>
+        <Box sx={{ width: { xs: '100vw', sm: 400 }, p: { xs: 2, sm: 3 } }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+              Filtreler
+            </Typography>
+          </Box>
+          <Form form={filterForm} schema={expenseFilterSchema} onSubmit={(e) => e.preventDefault()} />
+          <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
+            <Button
+              variant="outlined"
+              onClick={() =>
+                filterForm.reset({ category: '', paymentType: '', userId: '', startDate: '', endDate: '' })
+              }
+              fullWidth>
+              Temizle
+            </Button>
+            <Button variant="contained" onClick={() => setFilterDrawerOpen(false)} fullWidth>
+              Uygula
+            </Button>
+          </Box>
         </Box>
-      </Paper>
+      </Drawer>
 
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead sx={{ backgroundColor: theme.palette.grey[100] }}>
-            <TableRow>
-              <TableCell sx={{ fontWeight: 600 }}>Tarih</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>Kategori</TableCell>
-              <TableCell sx={{ fontWeight: 600 }} align="right">
-                Tutar
-              </TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>Ödeme Tipi</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>Kullanıcı</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>Açıklama</TableCell>
-              <TableCell sx={{ fontWeight: 600 }} align="right">
-                İşlemler
-              </TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {filteredExpenses.length === 0 ? (
+      {isMobile ? (
+        <Stack spacing={2}>
+          {filteredExpenses.length === 0 ? (
+            <Paper sx={{ p: 3 }}>
+              <Typography color="text.secondary" align="center">
+                {expenses.length === 0 ? 'Henüz gider kaydı bulunmamaktadır' : 'Filtreye uygun gider bulunamadı'}
+              </Typography>
+            </Paper>
+          ) : (
+            filteredExpenses.map((expense) => (
+              <Card key={expense.id} variant="outlined">
+                <CardContent>
+                  <Grid container spacing={2}>
+                    <Grid item xs={12}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="subtitle2" color="text.secondary">
+                          Tarih
+                        </Typography>
+                        <Typography variant="caption">{formatDate(expense.date)}</Typography>
+                      </Box>
+                    </Grid>
+                    <Grid item xs={12}>
+                      <Divider />
+                    </Grid>
+                    <Grid item xs={12}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="subtitle2" color="text.secondary">
+                          Kategori
+                        </Typography>
+                        <Chip
+                          label={getCategoryLabel(expense.category)}
+                          color={getCategoryColor(expense.category)}
+                          size="small"
+                        />
+                      </Box>
+                    </Grid>
+                    <Grid item xs={12}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="subtitle2" color="text.secondary">
+                          Tutar
+                        </Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                          {expense.amount?.toFixed(2)} ₺
+                        </Typography>
+                      </Box>
+                    </Grid>
+                    <Grid item xs={12}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="subtitle2" color="text.secondary">
+                          Ödeme Tipi
+                        </Typography>
+                        <Typography variant="body2">{expense.paymentType || '-'}</Typography>
+                      </Box>
+                    </Grid>
+                    <Grid item xs={12}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="subtitle2" color="text.secondary">
+                          Kullanıcı
+                        </Typography>
+                        <Typography variant="body2">{expense.userName || '-'}</Typography>
+                      </Box>
+                    </Grid>
+                    <Grid item xs={12}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
+                        <Typography variant="subtitle2" color="text.secondary">
+                          Açıklama
+                        </Typography>
+                        <Typography variant="body2" sx={{ textAlign: 'right', maxWidth: '60%' }}>
+                          {expense.description || '-'}
+                        </Typography>
+                      </Box>
+                    </Grid>
+                    <Grid item xs={12}>
+                      <Stack direction="row" spacing={1}>
+                        <Button
+                          fullWidth
+                          variant="outlined"
+                          color="primary"
+                          startIcon={<EditIcon />}
+                          onClick={() => handleEditExpense(expense)}>
+                          Düzenle
+                        </Button>
+                        <Button
+                          fullWidth
+                          variant="outlined"
+                          color="error"
+                          startIcon={<DeleteIcon />}
+                          onClick={() => expense.id && handleDeleteExpense(expense.id)}>
+                          Sil
+                        </Button>
+                      </Stack>
+                    </Grid>
+                  </Grid>
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </Stack>
+      ) : (
+        <TableContainer component={Paper}>
+          <Table>
+            <TableHead sx={{ backgroundColor: theme.palette.grey[100] }}>
               <TableRow>
-                <TableCell colSpan={7} sx={{ textAlign: 'center', py: 3 }}>
-                  <Typography color={theme.palette.grey[600]}>
-                    {expenses.length === 0 ? 'Henüz gider kaydı bulunmamaktadır' : 'Filtreye uygun gider bulunamadı'}
-                  </Typography>
+                <TableCell sx={{ fontWeight: 600 }}>Tarih</TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>Kategori</TableCell>
+                <TableCell sx={{ fontWeight: 600 }} align="right">
+                  Tutar
+                </TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>Ödeme Tipi</TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>Kullanıcı</TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>Açıklama</TableCell>
+                <TableCell sx={{ fontWeight: 600 }} align="right">
+                  İşlemler
                 </TableCell>
               </TableRow>
-            ) : (
-              filteredExpenses.map((expense) => (
-                <TableRow key={expense.id}>
-                  <TableCell>{formatDate(expense.date)}</TableCell>
-                  <TableCell>
-                    <Chip
-                      label={getCategoryLabel(expense.category)}
-                      color={getCategoryColor(expense.category)}
-                      size="small"
-                    />
-                  </TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 600 }}>
-                    {expense.amount?.toFixed(2)} ₺
-                  </TableCell>
-                  <TableCell>{expense.paymentType || '-'}</TableCell>
-                  <TableCell>{expense.userName || '-'}</TableCell>
-                  <TableCell>{expense.description || '-'}</TableCell>
-                  <TableCell align="right">
-                    <IconButton size="small" color="primary" onClick={() => handleEditExpense(expense)} sx={{ mr: 1 }}>
-                      <EditIcon fontSize="small" />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      color="error"
-                      onClick={() => expense.id && handleDeleteExpense(expense.id)}>
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
+            </TableHead>
+            <TableBody>
+              {filteredExpenses.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} sx={{ textAlign: 'center', py: 3 }}>
+                    <Typography color={theme.palette.grey[600]}>
+                      {expenses.length === 0 ? 'Henüz gider kaydı bulunmamaktadır' : 'Filtreye uygun gider bulunamadı'}
+                    </Typography>
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
+              ) : (
+                filteredExpenses.map((expense) => (
+                  <TableRow key={expense.id}>
+                    <TableCell>{formatDate(expense.date)}</TableCell>
+                    <TableCell>
+                      <Chip
+                        label={getCategoryLabel(expense.category)}
+                        color={getCategoryColor(expense.category)}
+                        size="small"
+                      />
+                    </TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 600 }}>
+                      {expense.amount?.toFixed(2)} ₺
+                    </TableCell>
+                    <TableCell>{expense.paymentType || '-'}</TableCell>
+                    <TableCell>{expense.userName || '-'}</TableCell>
+                    <TableCell>{expense.description || '-'}</TableCell>
+                    <TableCell align="right">
+                      <IconButton
+                        size="small"
+                        color="primary"
+                        onClick={() => handleEditExpense(expense)}
+                        sx={{ mr: 1 }}>
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                      <IconButton
+                        size="small"
+                        color="error"
+                        onClick={() => expense.id && handleDeleteExpense(expense.id)}>
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
 
       {/* Add/Edit Dialog */}
       <Dialog
@@ -436,7 +606,8 @@ const ExpensesPage = () => {
           editForm.reset();
         }}
         maxWidth="sm"
-        fullWidth>
+        fullWidth
+        fullScreen={isMobile}>
         <DialogTitle sx={{ fontWeight: 600, color: theme.palette.dark[800] }}>
           {editingExpenseId ? 'Gider Güncelle' : 'Yeni Gider Ekle'}
         </DialogTitle>

@@ -8,6 +8,7 @@ import Sidebar, { DRAWER_WIDTH } from './partials/Sidebar';
 export default function AuthorizedLayout() {
   const [open, setOpen] = useState(false);
   const isDesktop = useResponsive('up', 'lg');
+  const isMobile = useResponsive('down', 'md');
 
   const { token } = useAppSelector((state) => state.auth);
   const navigate = useNavigate();
@@ -50,7 +51,7 @@ export default function AuthorizedLayout() {
       <Box
         sx={{
           ml: open ? `${DRAWER_WIDTH}px` : isDesktop ? `${DRAWER_WIDTH}px` : 0,
-          mt: `${APPBAR_HEIGHT}px`,
+          mt: `${isMobile ? 0 : APPBAR_HEIGHT}px`,
           pb: 2,
           backgroundColor: '#f5f6fa',
         }}>
