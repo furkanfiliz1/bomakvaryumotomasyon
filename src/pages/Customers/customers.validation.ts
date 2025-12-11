@@ -7,6 +7,7 @@ const customerTypeOptions = [
   { id: 'petshop', name: 'Petshop' },
   { id: 'bireysel', name: 'Bireysel' },
   { id: 'toptancı', name: 'Toptancı' },
+  { id: 'alsatcı', name: 'Al Satçı' },
 ];
 
 // Customer Schema

@@ -28,6 +28,8 @@ import Collapse from '@mui/material/Collapse';
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
+import CustomInputLabel from '../../components/common/Form/_partials/components/CustomInputLabel';
+import { CustomTextInput } from '../../components/common/Form/_partials/components/CustomTextInput';
 import { useNotice, Form } from '@components';
 import { salesService } from '../../services/salesService';
 import { customerService } from '../../services/customerService';
@@ -66,10 +68,15 @@ const SalesPage = () => {
     {
       categoryId: string;
       fishId: string;
+      stockId: string; // Stok ID'si - hangi stok kaydından satıldığını belirler (size bilgisi için)
+      size: 'small' | 'medium' | 'large'; // Stoktan gelen boy bilgisi
       quantity: number;
       gift: number;
       unitPrice: number;
+      unitCost?: number;
       total: number;
+      profit?: number;
+      profitMargin?: number;
       tankId?: string;
     }[]
   >([]);
@@ -82,7 +89,7 @@ const SalesPage = () => {
     tankId: '',
   });
 
-  // State to hold input values for each fish in the stock table
+  // State to hold input values for each fish in the stock table (stockId için)
   const [fishInputs, setFishInputs] = useState<Record<string, { quantity: number; gift: number; unitPrice: number }>>(
     {},
   );
@@ -123,12 +130,13 @@ const SalesPage = () => {
         console.log('✅ Filtered stocks for tank:', stocks.length, stocks);
         setTankStocks(stocks);
 
-        // Initialize input values for each fish
+        // Initialize input values for each stock (stockId bazlı)
         const initialInputs: Record<string, { quantity: number; gift: number; unitPrice: number }> = {};
         stocks.forEach((stock) => {
           const fish = fishes.find((f) => f.id === stock.fishTypeId);
           console.log(`🐠 Fish for ${stock.fishTypeName}:`, fish);
-          initialInputs[stock.fishTypeId] = {
+          // Her stok kaydı için ayrı input (farklı boylar farklı stok kayıtları)
+          initialInputs[stock.id!] = {
             quantity: 1,
             gift: 0,
             unitPrice: fish?.unitPrice || 0,
@@ -154,11 +162,11 @@ const SalesPage = () => {
   };
 
   // Add fish from stock table
-  const handleAddFishFromTable = (fishId: string) => {
-    const stockItem = tankStocks.find((stock) => stock.fishTypeId === fishId);
+  const handleAddFishFromTable = (stockId: string) => {
+    const stockItem = tankStocks.find((stock) => stock.id === stockId);
     if (!stockItem) return;
 
-    const inputs = fishInputs[fishId];
+    const inputs = fishInputs[stockId];
     if (!inputs || inputs.quantity <= 0) {
       notice({
         variant: 'error',
@@ -169,9 +177,9 @@ const SalesPage = () => {
       return;
     }
 
-    const availableStock = stockItem.quantity;
-    const totalQuantityNeeded = inputs.quantity + inputs.gift; // Toplam stok ihtiyacı (adet + hediye)
-    const paidQuantity = inputs.quantity; // Sadece ödenen miktar
+    const availableStock = Number(stockItem.quantity);
+    const totalQuantityNeeded = Number(inputs.quantity) + Number(inputs.gift); // Toplam stok ihtiyacı (adet + hediye)
+    const paidQuantity = Number(inputs.quantity) - Number(inputs.gift); // Hediye çıkarıldıktan sonra kalan (ödenen miktar)
 
     if (totalQuantityNeeded > availableStock) {
       notice({
@@ -183,28 +191,38 @@ const SalesPage = () => {
       return;
     }
 
-    const fish = fishes.find((f) => f.id === fishId);
+    const fish = fishes.find((f) => f.id === stockItem.fishTypeId);
     if (!fish) return;
 
-    const total = paidQuantity * inputs.unitPrice; // Sadece ödenen miktardan ücret al
+    const total = paidQuantity * Number(inputs.unitPrice); // (Adet - Hediye) * Birim Fiyat
+    const unitCost = Number(stockItem.unitCost) || 0; // Stoktan maliyet bilgisini al
+    const soldQuantity = paidQuantity; // Satılan miktar (hediye hariç)
+    const costAmount = soldQuantity * unitCost; // Toplam maliyet
+    const profit = unitCost === 0 ? total : total - costAmount; // Kar (kendi üretimse toplam tutar kar)
+    const profitMargin = total > 0 ? (profit / total) * 100 : 0; // Kar marjı %
 
     setSaleItems([
       ...saleItems,
       {
         categoryId: fish.categoryId || '',
-        fishId: fishId,
-        quantity: inputs.quantity,
-        gift: inputs.gift,
-        unitPrice: inputs.unitPrice,
-        total: total,
+        fishId: stockItem.fishTypeId,
+        stockId: stockItem.id!, // Hangi stok kaydından satıldığı
+        size: stockItem.size || 'medium', // Stoktan gelen boy bilgisi
+        quantity: Number(inputs.quantity),
+        gift: Number(inputs.gift),
+        unitPrice: Number(inputs.unitPrice),
+        unitCost: Number(unitCost),
+        total: Number(total),
+        profit: Number(profit),
+        profitMargin: Number(profitMargin),
         tankId: currentItem.tankId,
       },
     ]);
 
-    // Reset input values for this fish
+    // Reset input values for this stock
     setFishInputs({
       ...fishInputs,
-      [fishId]: {
+      [stockId]: {
         quantity: 1,
         gift: 0,
         unitPrice: fish.unitPrice,
@@ -218,7 +236,7 @@ const SalesPage = () => {
   };
 
   // Calculate totals
-  const subtotal = saleItems.reduce((sum, item) => sum + item.total, 0);
+  const subtotal = saleItems.reduce((sum, item) => sum + Number(item.total), 0);
   const discount = Number(watchDiscount) || 0;
   const total = subtotal - discount;
 
@@ -455,6 +473,8 @@ const SalesPage = () => {
         return {
           categoryId: fish?.categoryId || '',
           fishId: item.fishId,
+          stockId: '', // Eski kayıtlar için boş
+          size: item.size || 'medium',
           quantity: item.quantity,
           gift: item.gift || 0,
           unitPrice: item.unitPrice,
@@ -504,12 +524,16 @@ const SalesPage = () => {
           fishId: item.fishId,
           fishName: fish?.name || '',
           categoryName: category?.name || '',
-          quantity: item.quantity,
-          gift: item.gift,
+          size: item.size,
+          quantity: Number(item.quantity),
+          gift: Number(item.gift),
           mortality: 0,
-          soldQuantity: item.quantity,
-          unitPrice: item.unitPrice,
-          total: item.total,
+          soldQuantity: Number(item.quantity),
+          unitPrice: Number(item.unitPrice),
+          unitCost: Number(item.unitCost),
+          total: Number(item.total),
+          profit: Number(item.profit),
+          profitMargin: Number(item.profitMargin),
           tankId: item.tankId,
         };
       });
@@ -518,9 +542,9 @@ const SalesPage = () => {
         customerId: String(data.customerId) || '',
         customerName: selectedCustomer?.name || '',
         date: new Date(data.date),
-        subtotal: subtotal,
+        subtotal: Number(subtotal),
         discount: Number(data.discount) || 0,
-        total: total,
+        total: Number(total),
         notes: data.notes || '',
         items: itemsWithNames,
       };
@@ -542,12 +566,12 @@ const SalesPage = () => {
             const tank = tanks.find((t) => t.id === item.tankId);
             const fish = fishes.find((f) => f.id === item.fishId);
             const category = categories.find((c) => c.id === fish?.categoryId);
-            const totalQty = item.quantity + item.gift; // Toplam miktar (adet + hediye)
+            const totalQty = Number(item.quantity) + Number(item.gift); // Toplam miktar (adet + hediye)
 
             if (tank && fish && totalQty > 0) {
               try {
                 // Check if enough stock exists
-                const currentStock = await tankService.checkTankStock(tank.id!, fish.id!);
+                const currentStock = await tankService.checkTankStock(tank.id!, fish.id!, item.size || 'medium');
                 if (currentStock < totalQty) {
                   console.warn(
                     `Yetersiz stok: Tank ${tank.name} - ${fish.name}. Mevcut: ${currentStock}, İhtiyaç: ${totalQty} (${item.quantity} adet + ${item.gift} hediye)`,
@@ -562,6 +586,8 @@ const SalesPage = () => {
                   fish.name,
                   category?.name || '',
                   -totalQty, // Negative to decrease stock (adet + hediye)
+                  0, // unitCost (satışta kullanılmaz)
+                  item.size || 'medium', // Balık boyu
                 );
               } catch (stockError) {
                 console.error('Stok güncelleme hatası:', stockError);
@@ -687,8 +713,8 @@ const SalesPage = () => {
             const isExpanded = expandedRows.has(sale.id || '');
             // Calculate collection status for this sale
             const saleCollections = collections.filter((c) => c.saleId === sale.id);
-            const totalCollected = saleCollections.reduce((sum, c) => sum + c.collectedAmount, 0);
-            const remainingAmount = sale.total - totalCollected;
+            const totalCollected = saleCollections.reduce((sum, c) => sum + Number(c.collectedAmount), 0);
+            const remainingAmount = Number(sale.total) - totalCollected;
             const hasCollections = saleCollections.length > 0;
             const isFullyCollected = remainingAmount <= 0;
 
@@ -748,7 +774,7 @@ const SalesPage = () => {
 
                   {/* Summary Info */}
                   <Box
-                    sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)' }, gap: 2, mb: 2 }}>
+                    sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(4, 1fr)' }, gap: 2, mb: 2 }}>
                     <Box>
                       <Typography variant="caption" color="text.secondary" display="block">
                         Ara Toplam
@@ -771,6 +797,21 @@ const SalesPage = () => {
                       </Typography>
                       <Typography variant="body1" sx={{ fontWeight: 700, color: 'primary.main' }}>
                         {sale.total?.toFixed(2)} ₺
+                      </Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="caption" color="text.secondary" display="block">
+                        Toplam Kar
+                      </Typography>
+                      <Typography variant="body1" sx={{ fontWeight: 700, color: 'success.main' }}>
+                        {(() => {
+                          const totalProfit =
+                            sale.items?.reduce((sum, item) => {
+                              // Tüm ürünlerin karını hesapla (kendi üretim dahil)
+                              return sum + (item.profit || 0);
+                            }, 0) || 0;
+                          return totalProfit > 0 ? `${totalProfit.toFixed(2)} ₺` : '-';
+                        })()}
                       </Typography>
                     </Box>
                   </Box>
@@ -803,6 +844,14 @@ const SalesPage = () => {
                           <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 1 }}>
                             <Box>
                               <Typography variant="caption" color="text.secondary">
+                                Boy
+                              </Typography>
+                              <Typography variant="body2">
+                                {item.size === 'small' ? 'Small' : item.size === 'large' ? 'Large' : 'Medium'}
+                              </Typography>
+                            </Box>
+                            <Box>
+                              <Typography variant="caption" color="text.secondary">
                                 Adet
                               </Typography>
                               <Typography variant="body2">{item.quantity}</Typography>
@@ -821,10 +870,35 @@ const SalesPage = () => {
                             </Box>
                             <Box>
                               <Typography variant="caption" color="text.secondary">
+                                Birim Maliyet
+                              </Typography>
+                              <Typography
+                                variant="body2"
+                                color={(item.unitCost || 0) === 0 ? 'success.main' : 'text.primary'}>
+                                {(item.unitCost || 0) === 0
+                                  ? 'Kendi Üretim'
+                                  : `${Number(item.unitCost || 0).toFixed(2)} ₺`}
+                              </Typography>
+                            </Box>
+                            <Box>
+                              <Typography variant="caption" color="text.secondary">
                                 Toplam
                               </Typography>
                               <Typography variant="body2" sx={{ fontWeight: 600 }}>
                                 {item.total.toFixed(2)} ₺
+                              </Typography>
+                            </Box>
+                            <Box>
+                              <Typography variant="caption" color="text.secondary">
+                                Kar
+                              </Typography>
+                              <Typography
+                                variant="body2"
+                                sx={{ fontWeight: 600 }}
+                                color={(item.unitCost || 0) === 0 ? 'text.secondary' : 'success.main'}>
+                                {(item.unitCost || 0) === 0
+                                  ? '-'
+                                  : `${(item.profit || 0).toFixed(2)} ₺ (${(item.profitMargin || 0).toFixed(1)}%)`}
                               </Typography>
                             </Box>
                           </Box>
@@ -903,7 +977,7 @@ const SalesPage = () => {
                 <Stack spacing={2}>
                   {tankStocks.map((stock) => {
                     const fish = fishes.find((f) => f.id === stock.fishTypeId);
-                    const inputs = fishInputs[stock.fishTypeId] || {
+                    const inputs = fishInputs[stock.id!] || {
                       quantity: 1,
                       gift: 0,
                       unitPrice: fish?.unitPrice || 0,
@@ -919,9 +993,17 @@ const SalesPage = () => {
                         }}>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
                           <Box sx={{ flex: 1 }}>
-                            <Typography variant="body1" sx={{ fontWeight: 600, mb: 0.5 }}>
-                              {stock.fishTypeName}
-                            </Typography>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                              <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                                {stock.fishTypeName}
+                              </Typography>
+                              <Chip
+                                label={stock.size === 'small' ? 'Small' : stock.size === 'large' ? 'Large' : 'Medium'}
+                                size="small"
+                                color="primary"
+                                variant="outlined"
+                              />
+                            </Box>
                             <Typography variant="caption" color="text.secondary">
                               Stok: {stock.quantity} adet
                             </Typography>
@@ -934,74 +1016,73 @@ const SalesPage = () => {
                             gap: 1,
                             mb: 1,
                           }}>
-                          <Box>
-                            <Typography variant="caption" sx={{ mb: 0.5, display: 'block', fontWeight: 500 }}>
-                              Adet
-                            </Typography>
-                            <input
-                              type="number"
-                              value={inputs.quantity}
-                              onChange={(e) =>
-                                setFishInputs({
-                                  ...fishInputs,
-                                  [stock.fishTypeId]: { ...inputs, quantity: Number(e.target.value) },
-                                })
-                              }
-                              min="1"
-                              style={{
-                                width: '100%',
-                                padding: '10px',
-                                borderRadius: '4px',
-                                border: '1px solid #ccc',
-                                fontSize: '14px',
+                          <Box sx={{ flex: 1 }}>
+                            <CustomInputLabel label="Adet" />
+                            <CustomTextInput
+                              type="text"
+                              fullWidth
+                              value={inputs.quantity === 0 ? '' : inputs.quantity}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                if (value === '') {
+                                  setFishInputs({
+                                    ...fishInputs,
+                                    [stock.id!]: { ...inputs, quantity: 0 },
+                                  });
+                                } else if (/^[0-9]+$/.test(value)) {
+                                  setFishInputs({
+                                    ...fishInputs,
+                                    [stock.id!]: { ...inputs, quantity: Number(value) },
+                                  });
+                                }
                               }}
+                              sx={{ mb: 0 }}
                             />
                           </Box>
-                          <Box>
-                            <Typography variant="caption" sx={{ mb: 0.5, display: 'block', fontWeight: 500 }}>
-                              Hediye
-                            </Typography>
-                            <input
-                              type="number"
-                              value={inputs.gift}
-                              onChange={(e) =>
-                                setFishInputs({
-                                  ...fishInputs,
-                                  [stock.fishTypeId]: { ...inputs, gift: Number(e.target.value) },
-                                })
-                              }
-                              min="0"
-                              style={{
-                                width: '100%',
-                                padding: '10px',
-                                borderRadius: '4px',
-                                border: '1px solid #ccc',
-                                fontSize: '14px',
+                          <Box sx={{ flex: 1 }}>
+                            <CustomInputLabel label="Hediye" />
+                            <CustomTextInput
+                              type="text"
+                              fullWidth
+                              value={inputs.gift === 0 ? '' : inputs.gift}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                if (value === '') {
+                                  setFishInputs({
+                                    ...fishInputs,
+                                    [stock.id!]: { ...inputs, gift: 0 },
+                                  });
+                                } else if (/^[0-9]+$/.test(value)) {
+                                  setFishInputs({
+                                    ...fishInputs,
+                                    [stock.id!]: { ...inputs, gift: Number(value) },
+                                  });
+                                }
                               }}
+                              sx={{ mb: 0 }}
                             />
                           </Box>
-                          <Box>
-                            <Typography variant="caption" sx={{ mb: 0.5, display: 'block', fontWeight: 500 }}>
-                              Fiyat
-                            </Typography>
-                            <input
-                              type="number"
-                              value={inputs.unitPrice}
-                              onChange={(e) =>
-                                setFishInputs({
-                                  ...fishInputs,
-                                  [stock.fishTypeId]: { ...inputs, unitPrice: Number(e.target.value) },
-                                })
-                              }
-                              min="0"
-                              step="0.01"
-                              style={{
-                                width: '100%',
-                                padding: '10px',
-                                borderRadius: '4px',
-                                border: '1px solid #ccc',
-                                fontSize: '14px',
+                          <Box sx={{ flex: 1 }}>
+                            <CustomInputLabel label="Fiyat" />
+                            <CustomTextInput
+                              type="text"
+                              fullWidth
+                              value={inputs.unitPrice === 0 ? '' : inputs.unitPrice}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                if (value === '') {
+                                  setFishInputs({
+                                    ...fishInputs,
+                                    [stock.id!]: { ...inputs, unitPrice: 0 },
+                                  });
+                                } else if (/^[0-9]+(\.[0-9]*)?$/.test(value)) {
+                                  setFishInputs({
+                                    ...fishInputs,
+                                    [stock.id!]: { ...inputs, unitPrice: Number(value) },
+                                  });
+                                }
                               }}
+                              sx={{ mb: 0 }}
                             />
                           </Box>
                         </Box>
@@ -1012,7 +1093,7 @@ const SalesPage = () => {
                           color="primary"
                           size="small"
                           startIcon={<AddIcon />}
-                          onClick={() => handleAddFishFromTable(stock.fishTypeId)}>
+                          onClick={() => handleAddFishFromTable(stock.id!)}>
                           Sepete Ekle
                         </Button>
                       </Paper>
@@ -1052,6 +1133,14 @@ const SalesPage = () => {
                         <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 1 }}>
                           <Box>
                             <Typography variant="caption" color="text.secondary">
+                              Boy
+                            </Typography>
+                            <Typography variant="body2">
+                              {item.size === 'small' ? 'Small' : item.size === 'large' ? 'Large' : 'Medium'}
+                            </Typography>
+                          </Box>
+                          <Box>
+                            <Typography variant="caption" color="text.secondary">
                               Adet
                             </Typography>
                             <Typography variant="body2">{item.quantity}</Typography>
@@ -1070,10 +1159,33 @@ const SalesPage = () => {
                           </Box>
                           <Box>
                             <Typography variant="caption" color="text.secondary">
+                              Birim Maliyet
+                            </Typography>
+                            <Typography
+                              variant="body2"
+                              color={(item.unitCost || 0) === 0 ? 'success.main' : 'text.primary'}>
+                              {(item.unitCost || 0) === 0
+                                ? 'Kendi Üretim'
+                                : `${Number(item.unitCost || 0).toFixed(2)} ₺`}
+                            </Typography>
+                          </Box>
+                          <Box>
+                            <Typography variant="caption" color="text.secondary">
                               Toplam
                             </Typography>
                             <Typography variant="body2" sx={{ fontWeight: 600 }}>
                               {item.total.toFixed(2)} ₺
+                            </Typography>
+                          </Box>
+                          <Box>
+                            <Typography variant="caption" color="text.secondary">
+                              Kar
+                            </Typography>
+                            <Typography
+                              variant="body2"
+                              sx={{ fontWeight: 600 }}
+                              color={(item.unitCost || 0) === 0 ? 'text.secondary' : 'success.main'}>
+                              {(item.unitCost || 0) === 0 ? '-' : `${(item.profit || 0).toFixed(2)} ₺`}
                             </Typography>
                           </Box>
                         </Box>
@@ -1099,6 +1211,19 @@ const SalesPage = () => {
                       </Typography>
                       <Typography variant="body1" sx={{ fontWeight: 600, color: 'error.main' }}>
                         {discount.toFixed(2)} ₺
+                      </Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <Typography variant="body1" sx={{ fontWeight: 600, color: 'success.main' }}>
+                        Toplam Kar:
+                      </Typography>
+                      <Typography variant="body1" sx={{ fontWeight: 600, color: 'success.main' }}>
+                        {(() => {
+                          const totalProfit = saleItems.reduce((sum, item) => {
+                            return sum + (item.profit || 0);
+                          }, 0);
+                          return totalProfit > 0 ? `${totalProfit.toFixed(2)} ₺` : '-';
+                        })()}
                       </Typography>
                     </Box>
                     <Divider sx={{ my: 0.5 }} />

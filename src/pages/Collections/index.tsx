@@ -15,17 +15,19 @@ import {
   Chip,
   Drawer,
   Badge,
+  IconButton,
 } from '@mui/material';
 import PaymentIcon from '@mui/icons-material/Payment';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import FilterListIcon from '@mui/icons-material/FilterList';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { useState, useEffect, useMemo } from 'react';
 import { useNotice } from '@components';
 import { collectionService } from '../../services/collectionService';
 import { salesService } from '../../services/salesService';
 import { Collection } from '../../types/collection';
 import { Sale } from '../../types/sale';
-import { currencyFormatter } from '@utils';
+import { formatTurkishCurrency } from '@utils';
 
 interface SaleWithCollection extends Sale {
   totalCollected: number;
@@ -162,11 +164,38 @@ const CollectionsPage = () => {
     }
   };
 
+  const handleDeleteCollection = async (collectionId: string) => {
+    try {
+      setLoading(true);
+      await collectionService.deleteCollection(collectionId);
+
+      notice({
+        variant: 'success',
+        title: 'Başarılı',
+        message: 'Tahsilat silindi',
+        buttonTitle: 'Tamam',
+      });
+
+      await loadData();
+    } catch (error) {
+      console.error('❌ Collection delete error:', error);
+      notice({
+        variant: 'error',
+        title: 'Hata',
+        message: 'Tahsilat silinirken hata oluştu',
+        buttonTitle: 'Tamam',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const totalCollected = collections.reduce((sum, c) => sum + c.collectedAmount, 0);
   const totalReceivables = salesWithCollections.reduce((sum, s) => sum + s.remainingAmount, 0);
 
   // Filtered sales with collections
   const filteredSalesWithCollections = useMemo(() => {
+    console.log('salesWithCollections', salesWithCollections);
     let filtered = [...salesWithCollections];
 
     // Filter by customer name
@@ -302,7 +331,7 @@ const CollectionsPage = () => {
               Toplam Tahsilat
             </Typography>
             <Typography variant="h4" sx={{ fontWeight: 600 }}>
-              ₺{totalCollected.toFixed(2)}
+              {formatTurkishCurrency(totalCollected)}
             </Typography>
           </Card>
         </Grid>
@@ -312,7 +341,7 @@ const CollectionsPage = () => {
               Toplam Alacak
             </Typography>
             <Typography variant="h4" sx={{ fontWeight: 600 }}>
-              {currencyFormatter(totalReceivables, 'TRY')}
+              {formatTurkishCurrency(totalReceivables)}
             </Typography>
           </Card>
         </Grid>
@@ -343,9 +372,17 @@ const CollectionsPage = () => {
                   <Typography variant="h6" sx={{ fontWeight: 600, mb: 0.5 }}>
                     {sale.customerName}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography variant="caption" color="text.secondary" display="block">
                     Satış Tarihi: {new Date(sale.date.toDate()).toLocaleDateString('tr-TR')}
                   </Typography>
+                  {sale.notes && (
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ fontStyle: 'italic', display: 'block', mt: 0.5 }}>
+                      Not: {sale.notes}
+                    </Typography>
+                  )}
                 </Box>
               </Box>
 
@@ -355,20 +392,20 @@ const CollectionsPage = () => {
                     Toplam Tutar
                   </Typography>
                   <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                    ₺{sale.total.toFixed(2)}
+                    {formatTurkishCurrency(sale.total)}
                   </Typography>
                 </Box>
                 <Box>
                   <Typography variant="caption" color="text.secondary" display="block">
                     Tahsil Edilen
                   </Typography>
-                  <Chip label={`₺${sale.totalCollected.toFixed(2)}`} color="info" size="small" />
+                  <Chip label={formatTurkishCurrency(sale.totalCollected)} color="info" size="small" />
                 </Box>
                 <Box>
                   <Typography variant="caption" color="text.secondary" display="block">
                     Kalan
                   </Typography>
-                  <Chip label={`₺${sale.remainingAmount.toFixed(2)}`} color="warning" size="small" />
+                  <Chip label={formatTurkishCurrency(sale.remainingAmount)} color="warning" size="small" />
                 </Box>
               </Box>
 
@@ -425,7 +462,16 @@ const CollectionsPage = () => {
                     {collection.date ? new Date(collection.date).toLocaleDateString('tr-TR') : '-'}
                   </Typography>
                 </Box>
-                <Chip label={`₺${collection.collectedAmount.toFixed(2)}`} color="success" size="small" />
+                <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                  <Chip label={formatTurkishCurrency(collection.collectedAmount)} color="success" size="small" />
+                  <IconButton
+                    size="small"
+                    color="error"
+                    onClick={() => handleDeleteCollection(collection.id!)}
+                    title="Sil">
+                    <DeleteIcon fontSize="small" />
+                  </IconButton>
+                </Box>
               </Box>
 
               <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' }, gap: 2 }}>
@@ -433,7 +479,7 @@ const CollectionsPage = () => {
                   <Typography variant="caption" color="text.secondary" display="block">
                     Satış Toplamı
                   </Typography>
-                  <Typography variant="body2">₺{collection.saleTotal.toFixed(2)}</Typography>
+                  <Typography variant="body2">{formatTurkishCurrency(collection.saleTotal)}</Typography>
                 </Box>
                 {collection.notes && (
                   <Box>
@@ -457,13 +503,13 @@ const CollectionsPage = () => {
         <DialogContent sx={{ pt: 3 }}>
           <Box sx={{ mb: 2 }}>
             <Typography variant="body2" color="text.secondary">
-              Satış Toplamı: ₺{selectedSale?.total.toFixed(2)}
+              Satış Toplamı: {formatTurkishCurrency(selectedSale?.total)}
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Tahsil Edilen: ₺{selectedSale?.totalCollected.toFixed(2)}
+              Tahsil Edilen: {formatTurkishCurrency(selectedSale?.totalCollected)}
             </Typography>
             <Typography variant="body1" sx={{ fontWeight: 600, color: theme.palette.warning.main }}>
-              Kalan Tutar: ₺{selectedSale?.remainingAmount.toFixed(2)}
+              Kalan Tutar: {formatTurkishCurrency(selectedSale?.remainingAmount)}
             </Typography>
           </Box>
 

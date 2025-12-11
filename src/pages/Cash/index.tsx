@@ -25,10 +25,12 @@ import {
   Badge,
   Stack,
   Divider,
+  IconButton,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
 import FilterListIcon from '@mui/icons-material/FilterList';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { useState, useEffect, useMemo } from 'react';
 import { useNotice } from '@components';
 import { useForm, Controller } from 'react-hook-form';
@@ -118,6 +120,35 @@ const CashPage = () => {
         variant: 'error',
         title: 'Hata',
         message: 'İşlem eklenirken hata oluştu',
+        buttonTitle: 'Tamam',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteTransaction = async (id: string) => {
+    if (!window.confirm('Bu işlemi silmek istediğinize emin misiniz?')) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await cashService.deleteTransaction(id);
+
+      notice({
+        variant: 'success',
+        title: 'Başarılı',
+        message: 'İşlem silindi',
+        buttonTitle: 'Tamam',
+      });
+      await loadData();
+    } catch (error) {
+      console.error('Error deleting transaction:', error);
+      notice({
+        variant: 'error',
+        title: 'Hata',
+        message: 'İşlem silinirken hata oluştu',
         buttonTitle: 'Tamam',
       });
     } finally {
@@ -437,6 +468,16 @@ const CashPage = () => {
                         </Typography>
                       </Box>
                     </Grid>
+                    <Grid item xs={12}>
+                      <Button
+                        fullWidth
+                        variant="outlined"
+                        color="error"
+                        size="small"
+                        onClick={() => handleDeleteTransaction(transaction.id!)}>
+                        Sil
+                      </Button>
+                    </Grid>
                   </Grid>
                 </CardContent>
               </Card>
@@ -453,12 +494,15 @@ const CashPage = () => {
                 <TableCell sx={{ fontWeight: 600 }}>Tür</TableCell>
                 <TableCell sx={{ fontWeight: 600 }}>Açıklama</TableCell>
                 <TableCell sx={{ fontWeight: 600 }}>Tarih</TableCell>
+                <TableCell sx={{ fontWeight: 600 }} align="center">
+                  İşlemler
+                </TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {filteredTransactions.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} sx={{ textAlign: 'center', py: 3 }}>
+                  <TableCell colSpan={6} sx={{ textAlign: 'center', py: 3 }}>
                     <Typography color={theme.palette.grey[600]}>
                       {transactions.length === 0 ? 'İşlem bulunmamaktadır' : 'Filtreye uygun işlem bulunamadı'}
                     </Typography>
@@ -479,6 +523,11 @@ const CashPage = () => {
                     <TableCell>{transaction.description}</TableCell>
                     <TableCell>
                       {transaction.createdAt ? new Date(transaction.createdAt).toLocaleString('tr-TR') : '-'}
+                    </TableCell>
+                    <TableCell align="center">
+                      <IconButton size="small" color="error" onClick={() => handleDeleteTransaction(transaction.id!)}>
+                        <DeleteIcon />
+                      </IconButton>
                     </TableCell>
                   </TableRow>
                 ))

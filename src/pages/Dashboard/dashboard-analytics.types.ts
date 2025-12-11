@@ -39,8 +39,12 @@ export interface ProfitMargin {
 
 export interface DashboardStats {
   totalRevenue: number;
-  totalExpenses: number;
-  totalProfit: number;
+  totalPurchases: number; // Sadece alışlar
+  totalExpensesOnly: number; // Sadece giderler
+  totalExpenses: number; // Alış + Gider toplamı
+  salesProfit: number; // Satışlardan elde edilen brüt kar (maliyet - satış)
+  salesProfitMargin: number; // Satış kar marjı %
+  totalProfit: number; // Net kar (satış - alış - gider)
   totalCashBalance: number;
   salesCount: number;
   purchaseCount: number;
@@ -51,6 +55,8 @@ export interface DashboardStats {
   lowStockCount: number;
   averageOrderValue: number;
   profitMargin: number;
+  totalFishDeaths: number; // Toplam balık ölümü
+  totalDeathLoss: number; // Toplam ölüm zararı
 }
 
 export interface TopProduct {
@@ -58,6 +64,8 @@ export interface TopProduct {
   name: string;
   quantity: number;
   revenue: number;
+  averagePrice: number;
+  totalAmount: number;
 }
 
 export interface RecentActivity {

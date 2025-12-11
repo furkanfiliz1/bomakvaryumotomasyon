@@ -5,7 +5,7 @@ import * as fields from 'src/components/common/Form/schemas/_common';
 export const createSaleSchema = (customerOptions: { value: string; label: string }[]) =>
   yup.object({
     customerId: fields
-      .select(customerOptions, 'string', ['value', 'label'])
+      .autoComplete(customerOptions, 'string', ['value', 'label'])
       .required('Müşteri seçimi zorunludur')
       .label('Müşteri'),
     date: fields.date.required('Tarih zorunludur').label('Tarih'),
@@ -26,7 +26,7 @@ export const createSaleFilterSchema = (
 ) =>
   yup.object({
     customerId: fields
-      .select([{ value: '', label: 'Tümü' }, ...customerOptions], 'string', ['value', 'label']).meta({ col: 4 })
+      .autoComplete([{ value: '', label: 'Tümü' }, ...customerOptions], 'string', ['value', 'label']).meta({ col: 4 })
       .label('Müşteri'),
     categoryId: fields
       .select([{ value: '', label: 'Tümü' }, ...categoryOptions], 'string', ['value', 'label']).meta({ col: 4 })

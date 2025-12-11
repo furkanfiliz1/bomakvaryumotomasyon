@@ -7,6 +7,8 @@ export interface FishCategory {
   updatedAt?: Timestamp;
 }
 
+export type FishSize = 'small' | 'medium' | 'large';
+
 export interface Fish {
   id?: string;
   categoryId: string;
@@ -14,6 +16,7 @@ export interface Fish {
   name: string;
   unitPrice: number;
   stock?: number;
+  availableSizes?: FishSize[]; // ['small', 'medium', 'large']
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
 }

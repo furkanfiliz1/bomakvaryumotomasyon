@@ -60,7 +60,7 @@ export const salesService = {
         if (item.tankId) {
           try {
             // Satılan miktarı (quantity + gift) geri ekle
-            const returnQuantity = item.quantity + item.gift;
+            const returnQuantity = Number(item.quantity) + Number(item.gift);
             if (returnQuantity > 0) {
               await tankService.updateTankStock(
                 item.tankId,
@@ -97,9 +97,9 @@ export const salesService = {
         customerName: data.customerName || '',
         date: data.date,
         items: data.items || [],
-        subtotal: data.subtotal || 0,
-        discount: data.discount || 0,
-        total: data.total || 0,
+        subtotal: Number(data.subtotal) || 0,
+        discount: Number(data.discount) || 0,
+        total: Number(data.total) || 0,
         notes: data.notes || '',
         createdAt: data.createdAt,
         updatedAt: data.updatedAt,

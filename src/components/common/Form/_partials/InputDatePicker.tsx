@@ -93,22 +93,6 @@ export default function DatePicker(props: IInputDate) {
   const minDates = dayjs(minDate);
   const maxDates = dayjs(maxDate);
 
-  // Helper: Keyboard event oluşturur
-  const createArrowKeyEvent = (direction: 'ArrowLeft' | 'ArrowRight') => {
-    return new KeyboardEvent('keydown', {
-      key: direction,
-      code: direction,
-      keyCode: direction === 'ArrowLeft' ? 37 : 39,
-      bubbles: true,
-      cancelable: true,
-    });
-  };
-
-  // Helper: Field section boş mu kontrol eder
-  const isFieldSectionEmpty = (fieldValue: string) => {
-    return !fieldValue || /^[A-Z_\s]*$/.test(fieldValue) || !/\d/.test(fieldValue);
-  };
-
   return (
     <Controller
       control={form.control}
@@ -125,61 +109,6 @@ export default function DatePicker(props: IInputDate) {
           format: views && views.length === 1 && views[0] === 'year' ? 'YYYY' : HUMAN_READABLE_DATE,
           views: views || ['year', 'month', 'day'],
         } as DatePickerProps<unknown>;
-
-        // Focus olduğunda yıl alanına git
-        const handleInputFocus = (e: React.FocusEvent<HTMLInputElement>) => {
-          setTimeout(() => {
-            const input = e.target;
-            // Gün -> Ay -> Yıl için 2 ArrowRight eventi gönder
-            input.dispatchEvent(createArrowKeyEvent('ArrowRight'));
-
-            setTimeout(() => {
-              input.dispatchEvent(createArrowKeyEvent('ArrowRight'));
-            }, 10);
-          }, 0);
-        };
-
-        // Input değişikliklerini dinle
-        const handleInput = (e: React.FormEvent<HTMLInputElement>) => {
-          const input = e.target as HTMLInputElement;
-
-          requestAnimationFrame(() => {
-            const value = input.value;
-            // Tüm alanlar placeholder ise temizle
-            if (value === 'DD.MM.YYYY' || value.length === 0) {
-              onChange('');
-            }
-          });
-        };
-
-        // Backspace ile alan boşaldığında otomatik önceki alana geç
-        const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-          if (e.key === 'Backspace') {
-            const input = e.target as HTMLInputElement;
-
-            requestAnimationFrame(() => {
-              requestAnimationFrame(() => {
-                const newValue = input.value;
-                const cursorPos = input.selectionStart || 0;
-
-                // DD.MM.YYYY formatı - pozisyonlar: gün(0-2), ay(3-5), yıl(6-10)
-
-                // Yıl alanında ve boş ise ay alanına geç
-                if (cursorPos >= 6 && isFieldSectionEmpty(newValue.substring(6, 10))) {
-                  input.dispatchEvent(createArrowKeyEvent('ArrowLeft'));
-                }
-                // Ay alanında ve boş ise gün alanına geç
-                else if (cursorPos >= 3 && cursorPos < 6 && isFieldSectionEmpty(newValue.substring(3, 5))) {
-                  input.dispatchEvent(createArrowKeyEvent('ArrowLeft'));
-                }
-                // Gün alanında ve boş ise tüm değeri temizle
-                else if (cursorPos < 3 && isFieldSectionEmpty(newValue.substring(0, 2))) {
-                  onChange('');
-                }
-              });
-            });
-          }
-        };
 
         return (
           <Box sx={{ width: '100%', opacity: readonly || disabled ? 0.6 : 1 }}>
@@ -198,9 +127,6 @@ export default function DatePicker(props: IInputDate) {
                     size: 'medium',
                     error: Boolean(error),
                     id: name,
-                    onFocus: handleInputFocus,
-                    onKeyDown: handleKeyDown,
-                    onInput: handleInput,
                   },
                   actionBar: {
                     actions: ['clear', 'accept'],

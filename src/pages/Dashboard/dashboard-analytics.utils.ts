@@ -4,6 +4,7 @@ import { Expense } from '../../types/expense';
 import { Collection } from '../../types/collection';
 import { Fish } from '../../types/fish';
 import { CashTransaction } from '../../types/cash';
+import { TankStock } from '../../types/tank';
 import {
   MonthlyRevenue,
   CategoryExpense,
@@ -258,12 +259,29 @@ export const calculateDashboardStats = (
   expenses: Expense[],
   collections: Collection[],
   fishes: Fish[],
-  cashTransactions: CashTransaction[]
+  cashTransactions: CashTransaction[],
+  tankStocks?: TankStock[]
 ): DashboardStats => {
   const totalRevenue = sales.reduce((sum, sale) => sum + (sale.total || 0), 0);
   const totalPurchases = purchases.reduce((sum, purchase) => sum + (purchase.totalCostWithShipping || 0), 0);
-  const totalExpenses = expenses.reduce((sum, expense) => sum + (expense.amount || 0), 0);
-  const totalProfit = totalRevenue - totalPurchases - totalExpenses;
+  const totalExpensesOnly = expenses.reduce((sum, expense) => sum + (expense.amount || 0), 0);
+  
+  // Satışlardan elde edilen brüt kar hesapla (sadece maliyet bilgisi olan ürünler için)
+  let salesProfit = 0;
+  let totalSalesWithCost = 0;
+  
+  sales.forEach((sale) => {
+    sale.items?.forEach((item) => {
+      if (item.unitCost && item.unitCost > 0) {
+        // Kar bilgisi varsa ekle
+        salesProfit += item.profit || 0;
+        totalSalesWithCost += item.total || 0;
+      }
+    });
+  });
+  
+  const salesProfitMargin = totalSalesWithCost > 0 ? (salesProfit / totalSalesWithCost) * 100 : 0;
+  const totalProfit = totalRevenue - totalPurchases - totalExpensesOnly;
 
   const totalCashBalance = cashTransactions.reduce((sum, transaction) => {
     return sum + (transaction.type === 'income' ? transaction.amount : -transaction.amount);
@@ -276,9 +294,17 @@ export const calculateDashboardStats = (
   const averageOrderValue = sales.length > 0 ? totalRevenue / sales.length : 0;
   const profitMargin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
 
+  // Balık ölüm istatistiklerini hesapla
+  const totalFishDeaths = tankStocks?.reduce((sum, stock) => sum + (stock.deathCount || 0), 0) || 0;
+  const totalDeathLoss = tankStocks?.reduce((sum, stock) => sum + (stock.totalDeathLoss || 0), 0) || 0;
+
   return {
     totalRevenue,
-    totalExpenses: totalPurchases + totalExpenses,
+    totalPurchases,
+    totalExpensesOnly,
+    totalExpenses: totalPurchases + totalExpensesOnly,
+    salesProfit,
+    salesProfitMargin,
     totalProfit,
     totalCashBalance,
     salesCount: sales.length,
@@ -290,6 +316,8 @@ export const calculateDashboardStats = (
     lowStockCount,
     averageOrderValue,
     profitMargin,
+    totalFishDeaths,
+    totalDeathLoss,
   };
 };
 
@@ -305,11 +333,21 @@ export const getTopProducts = (sales: Sale[], fishes: Fish[], limit: number = 5)
           name: fish?.name || item.fishName || 'Bilinmeyen',
           quantity: 0,
           revenue: 0,
+          averagePrice: 0,
+          totalAmount: 0,
         };
       }
       productMap[item.fishId].quantity += item.soldQuantity;
       productMap[item.fishId].revenue += item.total;
+      productMap[item.fishId].totalAmount += item.total;
     });
+  });
+
+  // Ortalama fiyatı hesapla
+  Object.values(productMap).forEach((product) => {
+    if (product.quantity > 0) {
+      product.averagePrice = product.totalAmount / product.quantity;
+    }
   });
 
   return Object.values(productMap)

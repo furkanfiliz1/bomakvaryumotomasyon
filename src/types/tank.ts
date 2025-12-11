@@ -21,7 +21,12 @@ export interface TankStock {
   fishTypeId: string;
   fishTypeName?: string;
   categoryName?: string;
+  size?: 'small' | 'medium' | 'large'; // Balık boyu
   quantity: number;
+  unitCost?: number; // Birim maliyet (0 = kendi üretim)
+  totalCost?: number; // Toplam maliyet (quantity * unitCost)
+  deathCount?: number; // Toplam ölü balık sayısı
+  totalDeathLoss?: number; // Ölümlerden kaynaklanan toplam zarar (deathCount * unitCost)
   lastUpdated?: Timestamp;
 }
 

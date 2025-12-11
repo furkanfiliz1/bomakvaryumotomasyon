@@ -1,4 +1,4 @@
-import { collection, addDoc, getDocs, query, orderBy, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, orderBy, deleteDoc, doc, Timestamp } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { CashTransaction, CashBalance } from '../types/cash';
 
@@ -10,6 +10,10 @@ class CashService {
       ...transaction,
       createdAt: Timestamp.now(),
     });
+  }
+
+  async deleteTransaction(id: string): Promise<void> {
+    await deleteDoc(doc(db, this.collectionName, id));
   }
 
   async getAllTransactions(): Promise<CashTransaction[]> {
@@ -32,7 +36,7 @@ class CashService {
         balance: 0,
       };
 
-      existing.balance += transaction.type === 'income' ? transaction.amount : -transaction.amount;
+      existing.balance += transaction.type === 'income' ? Number(transaction.amount) : -Number(transaction.amount);
       balanceMap.set(transaction.userId, existing);
     });
 

@@ -16,6 +16,19 @@ export const createFishSpeciesSchema = (categories: SelectOptions) =>
       .select(categories, 'string', ['id', 'name'])
       .required('Kategori seçimi zorunludur')
       .label('Kategori'),
+    availableSizes: fields
+      .multipleSelect(
+        [
+          { value: 'small', label: 'Small' },
+          { value: 'medium', label: 'Medium' },
+          { value: 'large', label: 'Large' },
+        ],
+        'string',
+        ['value', 'label'],
+      )
+      .required('En az bir boy seçimi zorunludur')
+      .label('Mevcut Boyutlar')
+      .meta({ helperText: 'Bu balık türü için mevcut olan boyutları seçin' }),
   });
 
 export type FishCategoryFormData = yup.InferType<typeof fishCategorySchema>;

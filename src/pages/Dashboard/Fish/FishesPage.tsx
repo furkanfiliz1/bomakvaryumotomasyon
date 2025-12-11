@@ -49,6 +49,7 @@ interface Fish {
   name: string;
   categoryId: string;
   categoryName?: string;
+  availableSizes?: string[];
   createdAt?: Date;
 }
 
@@ -74,13 +75,13 @@ const FishesPage = () => {
 
   // Add Fish Form
   const addFishForm = useForm<FishSpeciesFormData>({
-    defaultValues: { name: '', categoryId: '' },
+    defaultValues: { name: '', categoryId: '', availableSizes: [] },
     resolver: yupResolver(fishSpeciesSchema),
   });
 
   // Edit Fish Form
   const editFishForm = useForm<FishSpeciesFormData>({
-    defaultValues: { name: '', categoryId: '' },
+    defaultValues: { name: '', categoryId: '', availableSizes: [] },
     resolver: yupResolver(fishSpeciesSchema),
   });
 
@@ -171,6 +172,7 @@ const FishesPage = () => {
           name: data.name || '',
           categoryId: data.categoryId || '',
           categoryName: category?.name || 'Bilinmiyor',
+          availableSizes: data.availableSizes || [],
           createdAt: data.createdAt?.toDate() || new Date(),
         };
 
@@ -221,6 +223,7 @@ const FishesPage = () => {
       const fishData = {
         name: values.name,
         categoryId: values.categoryId,
+        availableSizes: values.availableSizes || [],
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -291,6 +294,7 @@ const FishesPage = () => {
     editFishForm.reset({
       name: fish.name,
       categoryId: fish.categoryId,
+      availableSizes: fish.availableSizes || [],
     });
     setOpenFishDialog(true);
   };
@@ -305,6 +309,7 @@ const FishesPage = () => {
       const fishData = {
         name: values.name,
         categoryId: values.categoryId,
+        availableSizes: values.availableSizes || [],
         updatedAt: new Date(),
       };
 
@@ -448,6 +453,32 @@ const FishesPage = () => {
                         </Box>
                       </Grid>
                       <Grid item xs={12}>
+                        <Divider />
+                      </Grid>
+                      <Grid item xs={12}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Typography variant="subtitle2" color="text.secondary">
+                            Mevcut Boyutlar
+                          </Typography>
+                          <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                            {fish.availableSizes && fish.availableSizes.length > 0 ? (
+                              fish.availableSizes.map((size) => (
+                                <Chip
+                                  key={size}
+                                  label={size === 'small' ? 'Small' : size === 'medium' ? 'Medium' : 'Large'}
+                                  size="small"
+                                  variant="outlined"
+                                />
+                              ))
+                            ) : (
+                              <Typography variant="body2" color="text.secondary">
+                                -
+                              </Typography>
+                            )}
+                          </Box>
+                        </Box>
+                      </Grid>
+                      <Grid item xs={12}>
                         <Stack direction="row" spacing={1}>
                           <Button
                             fullWidth
@@ -480,6 +511,7 @@ const FishesPage = () => {
                 <TableRow>
                   <TableCell sx={{ fontWeight: 600 }}>Balık Adı</TableCell>
                   <TableCell sx={{ fontWeight: 600 }}>Kategori</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Mevcut Boyutlar</TableCell>
                   <TableCell sx={{ fontWeight: 600 }} align="right">
                     İşlemler
                   </TableCell>
@@ -488,7 +520,7 @@ const FishesPage = () => {
               <TableBody>
                 {filteredFishes.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={3} sx={{ textAlign: 'center', py: 3 }}>
+                    <TableCell colSpan={4} sx={{ textAlign: 'center', py: 3 }}>
                       <Typography color={theme.palette.grey[600]}>
                         {fishes.length === 0 ? 'Henüz balık eklenmemiştir' : 'Filtreye uygun balık bulunamadı'}
                       </Typography>
@@ -499,6 +531,24 @@ const FishesPage = () => {
                     <TableRow key={fish.id}>
                       <TableCell>{fish.name}</TableCell>
                       <TableCell>{fish.categoryName || 'Bilinmiyor'}</TableCell>
+                      <TableCell>
+                        <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                          {fish.availableSizes && fish.availableSizes.length > 0 ? (
+                            fish.availableSizes.map((size) => (
+                              <Chip
+                                key={size}
+                                label={size === 'small' ? 'Small' : size === 'medium' ? 'Medium' : 'Large'}
+                                size="small"
+                                variant="outlined"
+                              />
+                            ))
+                          ) : (
+                            <Typography variant="body2" color="text.secondary">
+                              -
+                            </Typography>
+                          )}
+                        </Box>
+                      </TableCell>
                       <TableCell align="right">
                         <IconButton size="small" color="primary" onClick={() => handleEditFish(fish)} sx={{ mr: 1 }}>
                           <EditIcon fontSize="small" />

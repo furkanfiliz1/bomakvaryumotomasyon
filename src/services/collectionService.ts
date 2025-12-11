@@ -1,4 +1,4 @@
-import { collection, addDoc, getDocs, query, orderBy, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, orderBy, Timestamp, doc, deleteDoc, getDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { Collection, CollectionFormData } from '../types/collection';
 import { cashService } from './cashService';
@@ -19,7 +19,7 @@ class CollectionService {
     await cashService.addTransaction({
       userId: SALES_USER_ID,
       username: 'Dükkan',
-      amount: collectionData.collectedAmount,
+      amount: Number(collectionData.collectedAmount),
       type: 'income',
       description: `${collectionData.customerName} - Satış Tahsilatı`,
     });
@@ -43,6 +43,30 @@ class CollectionService {
   async getCollectionsBySale(saleId: string): Promise<Collection[]> {
     const allCollections = await this.getAllCollections();
     return allCollections.filter((c) => c.saleId === saleId);
+  }
+
+  async deleteCollection(collectionId: string): Promise<void> {
+    // Önce tahsilat kaydını al
+    const collectionRef = doc(db, COLLECTION_NAME, collectionId);
+    const collectionDoc = await getDoc(collectionRef);
+
+    if (!collectionDoc.exists()) {
+      throw new Error('Tahsilat kaydı bulunamadı');
+    }
+
+    const collectionData = collectionDoc.data() as Collection;
+
+    // Kasadan gideri çıkar (tahsilatı geri al)
+    await cashService.addTransaction({
+      userId: SALES_USER_ID,
+      username: 'Dükkan',
+      amount: Number(collectionData.collectedAmount),
+      type: 'expense',
+      description: `${collectionData.customerName} - Tahsilat İptali`,
+    });
+
+    // Tahsilat kaydını sil
+    await deleteDoc(collectionRef);
   }
 }
 

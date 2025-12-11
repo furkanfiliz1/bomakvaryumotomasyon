@@ -119,7 +119,10 @@ export const tankService = {
         fishTypeId: data.fishTypeId || '',
         fishTypeName: data.fishTypeName,
         categoryName: data.categoryName,
-        quantity: data.quantity || 0,
+        size: data.size || 'medium',
+        quantity: Number(data.quantity) || 0,
+        unitCost: Number(data.unitCost) || 0,
+        totalCost: Number(data.totalCost) || 0,
         lastUpdated: data.lastUpdated,
       });
     });
@@ -133,13 +136,16 @@ export const tankService = {
     fishTypeId: string,
     fishTypeName: string,
     categoryName: string,
-    quantityChange: number
+    quantityChange: number,
+    unitCost: number = 0,
+    size: 'small' | 'medium' | 'large' = 'medium'
   ): Promise<void> {
-    // Find existing stock record
+    // Find existing stock record with size
     const q = query(
       collection(db, TANK_STOCKS_COLLECTION),
       where('tankId', '==', tankId),
-      where('fishTypeId', '==', fishTypeId)
+      where('fishTypeId', '==', fishTypeId),
+      where('size', '==', size)
     );
 
     const querySnapshot = await getDocs(q);
@@ -153,19 +159,32 @@ export const tankService = {
           fishTypeId,
           fishTypeName,
           categoryName,
-          quantity: quantityChange,
+          size,
+          quantity: Number(quantityChange),
+          unitCost: Number(unitCost),
+          totalCost: Number(quantityChange) * Number(unitCost),
           lastUpdated: Timestamp.now(),
         });
       }
     } else {
       // Update existing stock record
       const stockDoc = querySnapshot.docs[0];
-      const currentQuantity = stockDoc.data().quantity || 0;
-      const newQuantity = currentQuantity + quantityChange;
+      const currentQuantity = Number(stockDoc.data().quantity) || 0;
+      const currentUnitCost = Number(stockDoc.data().unitCost) || 0;
+      const newQuantity = currentQuantity + Number(quantityChange);
 
       if (newQuantity > 0) {
+        // Ağırlıklı ortalama maliyet hesaplama (Weighted Average Cost)
+        const currentTotalCost = currentQuantity * currentUnitCost;
+        const newPurchaseCost = Number(quantityChange) > 0 ? Number(quantityChange) * Number(unitCost) : 0;
+        const newUnitCost = Number(quantityChange) > 0 
+          ? (currentTotalCost + newPurchaseCost) / newQuantity
+          : currentUnitCost;
+        
         await updateDoc(doc(db, TANK_STOCKS_COLLECTION, stockDoc.id), {
-          quantity: newQuantity,
+          quantity: Number(newQuantity),
+          unitCost: Number(newUnitCost),
+          totalCost: Number(newQuantity) * Number(newUnitCost),
           tankName,
           fishTypeName,
           categoryName,
@@ -186,27 +205,37 @@ export const tankService = {
     fishTypeId: string,
     fishTypeName: string,
     categoryName: string,
-    quantity: number
+    quantity: number,
+    unitCost: number = 0,
+    deathCount: number = 0,
+    size: 'small' | 'medium' | 'large' = 'medium'
   ): Promise<void> {
-    // Find existing stock record
+    // Find existing stock record with size
     const q = query(
       collection(db, TANK_STOCKS_COLLECTION),
       where('tankId', '==', tankId),
-      where('fishTypeId', '==', fishTypeId)
+      where('fishTypeId', '==', fishTypeId),
+      where('size', '==', size)
     );
 
     const querySnapshot = await getDocs(q);
+    const totalDeathLoss = Number(deathCount) * Number(unitCost);
 
     if (querySnapshot.empty) {
       // Create new stock record
-      if (quantity > 0) {
+      if (Number(quantity) > 0) {
         await addDoc(collection(db, TANK_STOCKS_COLLECTION), {
           tankId,
           tankName,
           fishTypeId,
           fishTypeName,
           categoryName,
-          quantity,
+          size,
+          quantity: Number(quantity),
+          unitCost: Number(unitCost),
+          totalCost: Number(quantity) * Number(unitCost),
+          deathCount: Number(deathCount),
+          totalDeathLoss: Number(totalDeathLoss),
           lastUpdated: Timestamp.now(),
         });
       }
@@ -214,28 +243,31 @@ export const tankService = {
       // Update existing stock record
       const stockDoc = querySnapshot.docs[0];
 
-      if (quantity > 0) {
+      if (Number(quantity) >= 0) {
+        // Keep the record even if quantity is 0 (when deaths equal initial quantity)
         await updateDoc(doc(db, TANK_STOCKS_COLLECTION, stockDoc.id), {
-          quantity,
+          quantity: Number(quantity),
+          unitCost: Number(unitCost),
+          totalCost: Number(quantity) * Number(unitCost),
+          deathCount: Number(deathCount),
+          totalDeathLoss: Number(totalDeathLoss),
           tankName,
           fishTypeName,
           categoryName,
           lastUpdated: Timestamp.now(),
         });
-      } else if (quantity === 0) {
-        // Delete if quantity is zero
-        await deleteDoc(doc(db, TANK_STOCKS_COLLECTION, stockDoc.id));
       } else {
         throw new Error('Stok miktarı negatif olamaz');
       }
     }
   },
 
-  async checkTankStock(tankId: string, fishTypeId: string): Promise<number> {
+  async checkTankStock(tankId: string, fishTypeId: string, size: 'small' | 'medium' | 'large' = 'medium'): Promise<number> {
     const q = query(
       collection(db, TANK_STOCKS_COLLECTION),
       where('tankId', '==', tankId),
-      where('fishTypeId', '==', fishTypeId)
+      where('fishTypeId', '==', fishTypeId),
+      where('size', '==', size)
     );
 
     const querySnapshot = await getDocs(q);
@@ -244,7 +276,7 @@ export const tankService = {
       return 0;
     }
 
-    return querySnapshot.docs[0].data().quantity || 0;
+    return Number(querySnapshot.docs[0].data().quantity) || 0;
   },
 
   async getAllTankStocks(): Promise<TankStock[]> {
@@ -261,7 +293,12 @@ export const tankService = {
         fishTypeId: data.fishTypeId || '',
         fishTypeName: data.fishTypeName,
         categoryName: data.categoryName,
-        quantity: data.quantity || 0,
+        size: data.size || 'medium',
+        quantity: Number(data.quantity) || 0,
+        unitCost: Number(data.unitCost) || 0,
+        totalCost: Number(data.totalCost) || 0,
+        deathCount: Number(data.deathCount) || 0,
+        totalDeathLoss: Number(data.totalDeathLoss) || 0,
         lastUpdated: data.lastUpdated,
       });
     });

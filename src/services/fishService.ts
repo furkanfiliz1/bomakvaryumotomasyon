@@ -47,8 +47,8 @@ export const fishService = {
         categoryId: data.categoryId || '',
         categoryName: data.categoryName || '',
         name: data.name || '',
-        unitPrice: data.unitPrice || 0,
-        stock: data.stock || 0,
+        unitPrice: Number(data.unitPrice) || 0,
+        stock: Number(data.stock) || 0,
         createdAt: data.createdAt,
         updatedAt: data.updatedAt,
       });
@@ -69,8 +69,8 @@ export const fishService = {
         categoryId: data.categoryId || '',
         categoryName: data.categoryName || '',
         name: data.name || '',
-        unitPrice: data.unitPrice || 0,
-        stock: data.stock || 0,
+        unitPrice: Number(data.unitPrice) || 0,
+        stock: Number(data.stock) || 0,
         createdAt: data.createdAt,
         updatedAt: data.updatedAt,
       });

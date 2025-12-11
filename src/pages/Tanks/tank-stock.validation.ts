@@ -21,6 +21,18 @@ export const createTankStockSchema = (
       .select(fishOptions, 'string', ['id', 'name'], isFishDisabled)
       .required('Balık seçimi zorunludur')
       .label('Balık Türü'),
+    size: fields
+      .select(
+        [
+          { value: 'small', label: 'Small' },
+          { value: 'medium', label: 'Medium' },
+          { value: 'large', label: 'Large' },
+        ],
+        'string',
+        ['value', 'label'],
+      )
+      .required('Boy seçimi zorunludur')
+      .label('Balık Boyu'),
     quantity: fields.number.required('Adet zorunludur').min(1, 'Adet en az 1 olmalıdır').label('Adet'),
   });
 

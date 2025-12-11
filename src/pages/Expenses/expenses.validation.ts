@@ -6,6 +6,7 @@ const categoryOptions = [
   { id: 'kira', name: 'Kira' },
   { id: 'elektrik', name: 'Elektrik' },
   { id: 'yem', name: 'Yem' },
+  { id: 'poşet', name: 'Poşet' },
   { id: 'malzeme', name: 'Malzeme' },
   { id: 'kargo', name: 'Kargo' },
   { id: 'diğer', name: 'Diğer' },

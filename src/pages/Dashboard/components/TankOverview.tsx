@@ -165,7 +165,7 @@ export const TankOverview = ({ tanks, tankStocks }: TankOverviewProps) => {
                           .map((stock) => (
                             <Chip
                               key={stock.id}
-                              label={`${stock.fishTypeName}: ${stock.quantity}`}
+                              label={`${stock.fishTypeName} (${stock.size === 'small' ? 'S' : stock.size === 'large' ? 'L' : 'M'}): ${stock.quantity}`}
                               size="small"
                               variant="outlined"
                               color="primary"

@@ -9,6 +9,7 @@ import devOnlyRouter from './dev-only-router';
 import { dashboardRouter } from 'src/pages/Dashboard/dashboard.routes';
 import { fishRouter } from 'src/pages/Dashboard/Fish/fish.routes';
 import { customersRouter } from 'src/pages/Customers/customers.routes';
+import { suppliersRouter } from 'src/pages/Suppliers/suppliers.routes';
 import { salesRouter } from 'src/pages/Sales/sales.routes';
 import { purchasesRouter } from 'src/pages/Purchases/purchases.routes';
 import { expensesRouter } from 'src/pages/Expenses/expenses.routes';
@@ -39,6 +40,11 @@ const routes: IRouteObject[] = [
         Müşteriler
        */
       ...customersRouter,
+
+      /**
+        Tedarikçiler
+       */
+      ...suppliersRouter,
 
       /**
         Satışlar

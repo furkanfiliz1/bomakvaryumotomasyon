@@ -37,6 +37,7 @@ import { fishService } from '../../services/fishService';
 import { Tank, TankStock } from '../../types/tank';
 import { Fish, FishCategory } from '../../types/fish';
 import { useNotice, Form } from '@components';
+import { clearCollection } from '../../utils/clearCollections';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import { createTankStockSchema, TankStockFormData } from './tank-stock.validation';
@@ -65,6 +66,10 @@ const TankStocksPage = () => {
     categoryName: string;
     currentQuantity: number;
     newQuantity: number;
+    unitCost: number;
+    deathCount: number;
+    newDeathCount: number;
+    size: 'small' | 'medium' | 'large';
   } | null>(null);
 
   // Create dynamic options for form selects
@@ -107,6 +112,7 @@ const TankStocksPage = () => {
       tankId: '',
       categoryId: '',
       fishId: '',
+      size: 'medium',
       quantity: 0,
     },
   });
@@ -181,6 +187,10 @@ const TankStocksPage = () => {
       categoryName: stock.categoryName || '',
       currentQuantity: stock.quantity,
       newQuantity: stock.quantity,
+      unitCost: stock.unitCost || 0,
+      deathCount: stock.deathCount || 0,
+      newDeathCount: 0,
+      size: stock.size || 'medium',
     });
     setOpenDialog(true);
   };
@@ -218,7 +228,17 @@ const TankStocksPage = () => {
         throw new Error('Tank veya balık bulunamadı');
       }
 
-      await tankService.setTankStock(tank.id!, tank.name, fish.id!, fish.name, category?.name || '', data.quantity);
+      await tankService.setTankStock(
+        tank.id!,
+        tank.name,
+        fish.id!,
+        fish.name,
+        category?.name || '',
+        data.quantity,
+        0,
+        0,
+        data.size as 'small' | 'medium' | 'large',
+      );
 
       notice({
         variant: 'success',
@@ -245,11 +265,15 @@ const TankStocksPage = () => {
   const handleSaveStock = async () => {
     if (!editingStock) return;
 
-    if (editingStock.newQuantity < 0) {
+    // Calculate final values
+    const totalDeaths = editingStock.deathCount + editingStock.newDeathCount;
+    const finalQuantity = editingStock.newQuantity - editingStock.newDeathCount;
+
+    if (finalQuantity < 0) {
       notice({
         variant: 'error',
         title: 'Hata',
-        message: 'Stok miktarı negatif olamaz',
+        message: 'Ölüm sayısı miktardan fazla olamaz',
         buttonTitle: 'Tamam',
       });
       return;
@@ -263,7 +287,10 @@ const TankStocksPage = () => {
         editingStock.fishTypeId,
         editingStock.fishTypeName,
         editingStock.categoryName,
-        editingStock.newQuantity,
+        finalQuantity,
+        editingStock.unitCost,
+        totalDeaths,
+        editingStock.size,
       );
 
       notice({
@@ -281,6 +308,39 @@ const TankStocksPage = () => {
         variant: 'error',
         title: 'Hata',
         message: error instanceof Error ? error.message : 'Stok güncellenirken hata oluştu',
+        buttonTitle: 'Tamam',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleClearAllStocks = async () => {
+    if (!window.confirm('TÜM STOK KAYITLARINI silmek istediğinize emin misiniz? Bu işlem geri alınamaz!')) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const result = await clearCollection('tankStocks');
+
+      if (result.success) {
+        notice({
+          variant: 'success',
+          title: 'Başarılı',
+          message: `${result.count} stok kaydı silindi`,
+          buttonTitle: 'Tamam',
+        });
+        await loadData();
+      } else {
+        throw new Error('Temizleme başarısız');
+      }
+    } catch (error) {
+      console.error('Error clearing stocks:', error);
+      notice({
+        variant: 'error',
+        title: 'Hata',
+        message: 'Stoklar temizlenirken hata oluştu',
         buttonTitle: 'Tamam',
       });
     } finally {
@@ -322,13 +382,26 @@ const TankStocksPage = () => {
         <Typography variant={isMobile ? 'h5' : 'h4'} sx={{ fontWeight: 600, color: theme.palette.dark[800] }}>
           Stok Yönetimi
         </Typography>
-        <Button
-          variant="contained"
-          onClick={() => handleOpenAddDialog()}
-          fullWidth={isMobile}
-          sx={{ background: theme.palette.primary.main, '&:hover': { background: theme.palette.primary.dark } }}>
-          Yeni Stok Ekle
-        </Button>
+        <Stack direction={isMobile ? 'column' : 'row'} spacing={1} sx={{ width: { xs: '100%', sm: 'auto' } }}>
+          {process.env.NODE_ENV === 'development' && (
+            <Button
+              variant="outlined"
+              color="error"
+              sx={{ display: 'none' }}
+              onClick={handleClearAllStocks}
+              disabled={loading}
+              fullWidth={isMobile}>
+              Tüm Stokları Temizle
+            </Button>
+          )}
+          <Button
+            variant="contained"
+            onClick={() => handleOpenAddDialog()}
+            fullWidth={isMobile}
+            sx={{ background: theme.palette.primary.main, '&:hover': { background: theme.palette.primary.dark } }}>
+            Yeni Stok Ekle
+          </Button>
+        </Stack>
       </Box>
 
       {/* Filter by Tank */}
@@ -388,9 +461,22 @@ const TankStocksPage = () => {
                               <Typography variant="subtitle2" color="text.secondary">
                                 Balık Türü
                               </Typography>
-                              <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                                {stock.fishTypeName}
-                              </Typography>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                                  {stock.fishTypeName}
+                                </Typography>
+                                <Chip
+                                  label={stock.size === 'small' ? 'Small' : stock.size === 'large' ? 'Large' : 'Medium'}
+                                  size="small"
+                                  color={
+                                    stock.size === 'large'
+                                      ? 'primary'
+                                      : stock.size === 'medium'
+                                        ? 'default'
+                                        : 'secondary'
+                                  }
+                                />
+                              </Box>
                             </Box>
                           </Grid>
                           <Grid item xs={12}>
@@ -400,6 +486,54 @@ const TankStocksPage = () => {
                               </Typography>
                               <Typography variant="body2" sx={{ fontWeight: 600 }}>
                                 {stock.quantity}
+                              </Typography>
+                            </Box>
+                          </Grid>
+                          <Grid item xs={12}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Typography variant="subtitle2" color="text.secondary">
+                                Birim Maliyet
+                              </Typography>
+                              <Typography
+                                variant="body2"
+                                color={stock.unitCost === 0 ? 'success.main' : 'text.primary'}>
+                                {stock.unitCost === 0 ? 'Kendi Üretim' : `₺${Number(stock.unitCost || 0).toFixed(2)}`}
+                              </Typography>
+                            </Box>
+                          </Grid>
+                          <Grid item xs={12}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Typography variant="subtitle2" color="text.secondary">
+                                Toplam Maliyet
+                              </Typography>
+                              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                {stock.totalCost === 0 ? '-' : `₺${Number(stock.totalCost || 0).toFixed(2)}`}
+                              </Typography>
+                            </Box>
+                          </Grid>
+                          <Grid item xs={12}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Typography variant="subtitle2" color="text.secondary">
+                                Ölüm Sayısı
+                              </Typography>
+                              <Typography
+                                variant="body2"
+                                color={(stock.deathCount || 0) > 0 ? 'error.main' : 'text.secondary'}>
+                                {stock.deathCount || 0}
+                              </Typography>
+                            </Box>
+                          </Grid>
+                          <Grid item xs={12}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Typography variant="subtitle2" color="text.secondary">
+                                Ölüm Zararı
+                              </Typography>
+                              <Typography
+                                variant="body2"
+                                color={(stock.totalDeathLoss || 0) > 0 ? 'error.main' : 'text.secondary'}>
+                                {(stock.totalDeathLoss || 0) > 0
+                                  ? `₺${Number(stock.totalDeathLoss || 0).toFixed(2)}`
+                                  : '-'}
                               </Typography>
                             </Box>
                           </Grid>
@@ -429,6 +563,18 @@ const TankStocksPage = () => {
                           Miktar
                         </TableCell>
                         <TableCell align="right" sx={{ fontWeight: 600 }}>
+                          Birim Maliyet
+                        </TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 600 }}>
+                          Toplam Maliyet
+                        </TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 600 }}>
+                          Ölüm Sayısı
+                        </TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 600 }}>
+                          Ölüm Zararı
+                        </TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 600 }}>
                           İşlemler
                         </TableCell>
                       </TableRow>
@@ -439,10 +585,47 @@ const TankStocksPage = () => {
                           <TableCell>
                             <Chip label={stock.categoryName} size="small" />
                           </TableCell>
-                          <TableCell>{stock.fishTypeName}</TableCell>
+                          <TableCell>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              {stock.fishTypeName}
+                              <Chip
+                                label={stock.size === 'small' ? 'Small' : stock.size === 'large' ? 'Large' : 'Medium'}
+                                size="small"
+                                color={
+                                  stock.size === 'large' ? 'primary' : stock.size === 'medium' ? 'default' : 'secondary'
+                                }
+                              />
+                            </Box>
+                          </TableCell>
                           <TableCell align="right">
                             <Typography variant="body2" sx={{ fontWeight: 600 }}>
                               {stock.quantity}
+                            </Typography>
+                          </TableCell>
+                          <TableCell align="right">
+                            <Typography variant="body2" color={stock.unitCost === 0 ? 'success.main' : 'text.primary'}>
+                              {stock.unitCost === 0 ? 'Kendi Üretim' : `₺${Number(stock.unitCost || 0).toFixed(2)}`}
+                            </Typography>
+                          </TableCell>
+                          <TableCell align="right">
+                            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                              {stock.totalCost === 0 ? '-' : `₺${Number(stock.totalCost || 0).toFixed(2)}`}
+                            </Typography>
+                          </TableCell>
+                          <TableCell align="right">
+                            <Typography
+                              variant="body2"
+                              color={(stock.deathCount || 0) > 0 ? 'error.main' : 'text.secondary'}>
+                              {stock.deathCount || 0}
+                            </Typography>
+                          </TableCell>
+                          <TableCell align="right">
+                            <Typography
+                              variant="body2"
+                              color={(stock.totalDeathLoss || 0) > 0 ? 'error.main' : 'text.secondary'}>
+                              {(stock.totalDeathLoss || 0) > 0
+                                ? `₺${Number(stock.totalDeathLoss || 0).toFixed(2)}`
+                                : '-'}
                             </Typography>
                           </TableCell>
                           <TableCell align="right">
@@ -491,6 +674,24 @@ const TankStocksPage = () => {
                 }
                 fullWidth
                 inputProps={{ min: 0 }}
+              />
+              <TextField
+                label="Yeni Ölüm Sayısı"
+                type="number"
+                value={editingStock.newDeathCount}
+                onChange={(e) =>
+                  setEditingStock({
+                    ...editingStock,
+                    newDeathCount: Number(e.target.value),
+                  })
+                }
+                fullWidth
+                inputProps={{ min: 0 }}
+                helperText={
+                  `Önceki Toplam Ölüm: ${editingStock.deathCount} | ` +
+                  `Yeni Toplam: ${editingStock.deathCount + editingStock.newDeathCount} | ` +
+                  `Ölüm Zararı: ₺${(editingStock.newDeathCount * editingStock.unitCost).toFixed(2)}`
+                }
               />
               <Grid container spacing={1}>
                 <Grid item xs={6} sm={3}>

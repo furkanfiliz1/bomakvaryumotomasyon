@@ -6,12 +6,16 @@ export interface SaleItem {
   fishId: string;
   fishName: string;
   categoryName: string;
+  size?: 'small' | 'medium' | 'large'; // Balık boyu
   quantity: number;
   gift: number;
   mortality: number;
   soldQuantity: number;
-  unitPrice: number;
+  unitPrice: number; // Satış fiyatı
+  unitCost?: number; // Maliyet fiyatı (stoktan gelir, 0 = kendi üretim)
   total: number;
+  profit?: number; // Kar (total - (soldQuantity * unitCost))
+  profitMargin?: number; // Kar marjı yüzdesi
   tankId?: string; // NEW: tank where fish come from
 }
 

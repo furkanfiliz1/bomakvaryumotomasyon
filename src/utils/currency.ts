@@ -32,3 +32,12 @@ export function numberFormatter(value: number | null | undefined = 0) {
 
   return numberValue;
 }
+
+export function formatTurkishCurrency(value: number | null | undefined = 0): string {
+  const _formatter = new Intl.NumberFormat('tr-TR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+
+  return '₺' + _formatter.format(value || 0);
+}
