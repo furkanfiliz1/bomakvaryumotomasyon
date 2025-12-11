@@ -14,7 +14,7 @@ export const TopProductsChart = ({ data }: TopProductsChartProps) => {
   return (
     <Paper sx={{ p: 3, height: '100%' }}>
       <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-        En Çok Satan Ürünler
+        En Çok Satan Balıklar
       </Typography>
       {data.length > 0 ? (
         <BarChart

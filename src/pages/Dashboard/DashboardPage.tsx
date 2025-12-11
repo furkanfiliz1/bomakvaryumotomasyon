@@ -121,7 +121,7 @@ const DashboardPage = () => {
   const customerCollections = calculateCustomerCollections(sales, collections);
   const profitMargins = calculateProfitMargins(sales, purchases, expenses, selectedYear);
   const topProducts = getTopProducts(sales, fishes, 5);
-  const topFishSales = getTopProducts(sales, fishes, 10); // En çok satılan 10 balık
+  const topFishSales = getTopProducts(sales, fishes, 50); // En çok satılan 10 balık
   const recentActivities = getRecentActivities(sales, purchases, expenses, collections, 10);
 
   if (loading) {
@@ -274,6 +274,13 @@ const DashboardPage = () => {
             </Grid>
           </Grid>
 
+          {/* En Çok Satılan Balıklar Listesi */}
+          <Grid container spacing={3} sx={{ mb: 4 }}>
+            <Grid item xs={12}>
+              <TopFishSalesList data={topFishSales} />
+            </Grid>
+          </Grid>
+
           {/* Ana Chart'lar */}
           <Grid container spacing={3} sx={{ mb: 4 }}>
             <Grid item xs={12} lg={8}>
@@ -308,13 +315,6 @@ const DashboardPage = () => {
             </Grid>
             <Grid item xs={12} lg={6}>
               <RecentActivitiesList data={recentActivities} />
-            </Grid>
-          </Grid>
-
-          {/* En Çok Satılan Balıklar Listesi */}
-          <Grid container spacing={3} sx={{ mb: 4 }}>
-            <Grid item xs={12}>
-              <TopFishSalesList data={topFishSales} />
             </Grid>
           </Grid>
 
