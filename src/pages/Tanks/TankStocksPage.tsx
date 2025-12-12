@@ -67,6 +67,7 @@ const TankStocksPage = () => {
     currentQuantity: number;
     newQuantity: number;
     unitCost: number;
+    estimatedPrice: number;
     deathCount: number;
     newDeathCount: number;
     size: 'small' | 'medium' | 'large';
@@ -114,6 +115,7 @@ const TankStocksPage = () => {
       fishId: '',
       size: 'medium',
       quantity: 0,
+      estimatedPrice: 0,
     },
   });
 
@@ -188,6 +190,7 @@ const TankStocksPage = () => {
       currentQuantity: stock.quantity,
       newQuantity: stock.quantity,
       unitCost: stock.unitCost || 0,
+      estimatedPrice: stock.estimatedPrice || 0,
       deathCount: stock.deathCount || 0,
       newDeathCount: 0,
       size: stock.size || 'medium',
@@ -207,6 +210,7 @@ const TankStocksPage = () => {
       categoryId: '',
       fishId: '',
       quantity: 0,
+      estimatedPrice: 0,
     });
     setOpenAddDialog(true);
   };
@@ -238,6 +242,7 @@ const TankStocksPage = () => {
         0,
         0,
         data.size as 'small' | 'medium' | 'large',
+        data.estimatedPrice || 0,
       );
 
       notice({
@@ -291,6 +296,7 @@ const TankStocksPage = () => {
         editingStock.unitCost,
         totalDeaths,
         editingStock.size,
+        editingStock.estimatedPrice || 0,
       );
 
       notice({
@@ -514,6 +520,18 @@ const TankStocksPage = () => {
                           <Grid item xs={12}>
                             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                               <Typography variant="subtitle2" color="text.secondary">
+                                Tahmini Satış Fiyatı
+                              </Typography>
+                              <Typography variant="body2" sx={{ fontWeight: 600, color: 'primary.main' }}>
+                                {(stock.estimatedPrice || 0) > 0
+                                  ? `₺${Number(stock.estimatedPrice || 0).toFixed(2)}`
+                                  : '-'}
+                              </Typography>
+                            </Box>
+                          </Grid>
+                          <Grid item xs={12}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Typography variant="subtitle2" color="text.secondary">
                                 Ölüm Sayısı
                               </Typography>
                               <Typography
@@ -569,6 +587,9 @@ const TankStocksPage = () => {
                           Toplam Maliyet
                         </TableCell>
                         <TableCell align="right" sx={{ fontWeight: 600 }}>
+                          Tahmini Satış Fiyatı
+                        </TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 600 }}>
                           Ölüm Sayısı
                         </TableCell>
                         <TableCell align="right" sx={{ fontWeight: 600 }}>
@@ -610,6 +631,13 @@ const TankStocksPage = () => {
                           <TableCell align="right">
                             <Typography variant="body2" sx={{ fontWeight: 600 }}>
                               {stock.totalCost === 0 ? '-' : `₺${Number(stock.totalCost || 0).toFixed(2)}`}
+                            </Typography>
+                          </TableCell>
+                          <TableCell align="right">
+                            <Typography variant="body2" sx={{ fontWeight: 600, color: 'primary.main' }}>
+                              {(stock.estimatedPrice || 0) > 0
+                                ? `₺${Number(stock.estimatedPrice || 0).toFixed(2)}`
+                                : '-'}
                             </Typography>
                           </TableCell>
                           <TableCell align="right">
@@ -674,6 +702,20 @@ const TankStocksPage = () => {
                 }
                 fullWidth
                 inputProps={{ min: 0 }}
+              />
+              <TextField
+                label="Tahmini Satış Fiyatı (₺)"
+                type="number"
+                value={editingStock.estimatedPrice}
+                onChange={(e) => {
+                  const value = e.target.value === '' ? 0 : Number(e.target.value);
+                  setEditingStock({
+                    ...editingStock,
+                    estimatedPrice: isNaN(value) ? 0 : value,
+                  });
+                }}
+                fullWidth
+                inputProps={{ min: 0, step: 0.01 }}
               />
               <TextField
                 label="Yeni Ölüm Sayısı"

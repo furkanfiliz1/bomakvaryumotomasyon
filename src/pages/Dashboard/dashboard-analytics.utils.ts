@@ -283,7 +283,11 @@ export const calculateDashboardStats = (
   const salesProfitMargin = totalSalesWithCost > 0 ? (salesProfit / totalSalesWithCost) * 100 : 0;
   const totalProfit = totalRevenue - totalPurchases - totalExpensesOnly;
 
-  const totalCashBalance = cashTransactions.reduce((sum, transaction) => {
+  // Sadece ana kullanıcının kasa bakiyesini hesapla (diğer kullanıcılar yatırımcı)
+  const MAIN_USER_ID = 'CEUQM60I32jmou5sA4rU';
+  const mainUserCashTransactions = cashTransactions.filter(t => t.userId === MAIN_USER_ID);
+  
+  const totalCashBalance = mainUserCashTransactions.reduce((sum, transaction) => {
     return sum + (transaction.type === 'income' ? transaction.amount : -transaction.amount);
   }, 0);
 
@@ -335,18 +339,24 @@ export const getTopProducts = (sales: Sale[], fishes: Fish[], limit: number = 5)
           revenue: 0,
           averagePrice: 0,
           totalAmount: 0,
+          totalProfit: 0,
+          saleType: 'own-production',
         };
       }
       productMap[item.fishId].quantity += item.soldQuantity;
       productMap[item.fishId].revenue += item.total;
       productMap[item.fishId].totalAmount += item.total;
+      productMap[item.fishId].totalProfit += item.profit || 0;
     });
   });
 
-  // Ortalama fiyatı hesapla
+  // Satış türünü belirle (Toplam = Kar ise kendi üretimi, değilse al-sat)
   Object.values(productMap).forEach((product) => {
     if (product.quantity > 0) {
       product.averagePrice = product.totalAmount / product.quantity;
+      // Toplam ile kar eşit mi kontrol et (küçük farkları tolere et)
+      const difference = Math.abs(product.totalAmount - product.totalProfit);
+      product.saleType = difference < 0.01 ? 'own-production' : 'resale';
     }
   });
 

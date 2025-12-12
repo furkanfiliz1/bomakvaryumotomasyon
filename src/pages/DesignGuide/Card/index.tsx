@@ -1,7 +1,7 @@
 import { Box, Card, Divider, Grid, Tooltip, Typography, styled, useTheme } from '@mui/material';
 import DesignGuideHeader from '../_partials/pageHeader';
 import { Icon } from '@components';
-import { currencyFormatter } from '@utils';
+import { formatTurkishCurrency } from '@utils';
 import { useResponsive } from '@hooks';
 
 const DesignGuideCard = () => {
@@ -53,7 +53,7 @@ const DesignGuideCard = () => {
                   </Box>
                   <Divider />
                   <Box sx={{ mt: 2 }}>
-                    <Typography variant="h6">{currencyFormatter(100, 'TRY')}</Typography>
+                    <Typography variant="h6">{formatTurkishCurrency(100)}</Typography>
                     <Typography variant="body6">Toplam Kazanç</Typography>
                   </Box>
                 </Card>
@@ -127,7 +127,7 @@ const DesignGuideCard = () => {
                 <Card sx={{ p: 2.5 }}>
                   <Typography sx={{ mb: 2 }}>Genel Durum</Typography>
                   <Typography fontWeight={700} fontSize={24}>
-                    {currencyFormatter(50, 'TRY')}
+                    {formatTurkishCurrency(50)}
                   </Typography>
                 </Card>
               </Grid>
@@ -148,7 +148,7 @@ const DesignGuideCard = () => {
             flexDirection: smDown ? 'column' : 'row',
           }}>
           <Typography>Toplam Çek / Tutar</Typography>
-          <Typography fontWeight={700}>{`0 Çek / ${currencyFormatter(0, 'TRY')} `}</Typography>
+          <Typography fontWeight={700}>{`0 Çek / ${formatTurkishCurrency(0)} `}</Typography>
         </Card>
       </LoadingBox>
       <LoadingBox>

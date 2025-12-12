@@ -1,7 +1,7 @@
 import { Checkbox } from '@components';
 import { HUMAN_READABLE_DATE, HUMAN_READABLE_DATE_TIME } from '@constant';
 import { Collapse, Radio, TableCell, TableRow, Typography, styled } from '@mui/material';
-import { currencyFormatter } from '@utils';
+import { currencyFormatter, formatTurkishCurrency } from '@utils';
 import dayjs from 'dayjs';
 import { get, uniqBy } from 'lodash';
 import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
@@ -182,7 +182,14 @@ const Row = (props: RowProps) => {
                 key={index}
                 {...rowElement?.props}>
                 <Typography fontWeight={600} variant="cell">
-                  {value ? currencyFormatter(value, get(row, 'Currency') || get(row, 'PayableAmountCurrency')) : '-'}
+                  {value
+                    ? (() => {
+                        const currency = get(row, 'Currency') || get(row, 'PayableAmountCurrency');
+                        return currency === 'TRY' || !currency
+                          ? formatTurkishCurrency(value)
+                          : currencyFormatter(value, currency);
+                      })()
+                    : '-'}
                 </Typography>
               </StyledTableCell>
             );

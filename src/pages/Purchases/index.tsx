@@ -280,6 +280,8 @@ const PurchasesPage = () => {
         fishName: string;
         totalQty: number;
         totalAmount: number;
+        categoryId: string;
+        categoryName: string;
       }
     > = {};
 
@@ -288,10 +290,13 @@ const PurchasesPage = () => {
         const fishId = item.fishTypeId;
         if (!fishTypeStats[fishId]) {
           const fish = fishes.find((f) => f.id === fishId);
+          const category = categories.find((c) => c.id === fish?.categoryId);
           fishTypeStats[fishId] = {
             fishName: fish?.name || 'Bilinmeyen',
             totalQty: 0,
             totalAmount: 0,
+            categoryId: fish?.categoryId || '',
+            categoryName: category?.name || 'Kategori Yok',
           };
         }
         fishTypeStats[fishId].totalQty += item.qty;
@@ -307,6 +312,16 @@ const PurchasesPage = () => {
       }))
       .sort((a, b) => b.totalAmount - a.totalAmount);
 
+    // Group by category
+    const categorizedFishTypes: Record<string, typeof fishTypeArray> = {};
+    fishTypeArray.forEach((fishType) => {
+      const categoryKey = fishType.categoryId || 'uncategorized';
+      if (!categorizedFishTypes[categoryKey]) {
+        categorizedFishTypes[categoryKey] = [];
+      }
+      categorizedFishTypes[categoryKey].push(fishType);
+    });
+
     // Calculate totals
     const totalFishTypes = fishTypeArray.length;
     const totalQuantity = fishTypeArray.reduce((sum, item) => sum + item.totalQty, 0);
@@ -316,13 +331,14 @@ const PurchasesPage = () => {
 
     return {
       fishTypeArray,
+      categorizedFishTypes,
       totalFishTypes,
       totalQuantity,
       totalAmount,
       totalPaid,
       totalPayable,
     };
-  }, [filteredPurchases, fishes]);
+  }, [filteredPurchases, fishes, categories]);
 
   // Load data
   useEffect(() => {
@@ -870,40 +886,78 @@ const PurchasesPage = () => {
             sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2, cursor: 'pointer' }}
             onClick={() => setFishDetailsOpen(!fishDetailsOpen)}>
             <Typography variant="h6" sx={{ fontWeight: 600 }}>
-              Balık Türlerine Göre Detaylar
+              Balık Kategorilerine Göre Detaylar
             </Typography>
             <IconButton size="small">{fishDetailsOpen ? <ExpandLessIcon /> : <ExpandMoreIcon />}</IconButton>
           </Box>
           <Collapse in={fishDetailsOpen} timeout="auto" unmountOnExit>
-            <Grid container spacing={2}>
-              {statistics.fishTypeArray.map((fishType) => (
-                <Grid item xs={12} sm={6} md={4} lg={3} key={fishType.fishId}>
-                  <Card variant="outlined" sx={{ height: '100%' }}>
-                    <CardContent>
-                      <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
-                        {fishType.fishName}
-                      </Typography>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                        <Typography variant="body2" color="text.secondary">
-                          Miktar:
-                        </Typography>
-                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                          {fishType.totalQty} adet
+            <Stack spacing={3}>
+              {Object.entries(statistics.categorizedFishTypes).map(([categoryId, fishTypes]) => {
+                const categoryName =
+                  categoryId === 'uncategorized' ? 'Kategori Yok' : fishTypes[0]?.categoryName || 'Bilinmeyen';
+                const categoryTotal = fishTypes.reduce((sum, fish) => sum + fish.totalAmount, 0);
+                const categoryQty = fishTypes.reduce((sum, fish) => sum + fish.totalQty, 0);
+
+                return (
+                  <Box key={categoryId}>
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        mb: 2,
+                        pb: 1,
+                        borderBottom: '2px solid',
+                        borderColor: 'primary.main',
+                      }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <CategoryIcon color="primary" />
+                        <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                          {categoryName}
                         </Typography>
                       </Box>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <Box sx={{ textAlign: 'right' }}>
                         <Typography variant="body2" color="text.secondary">
-                          Tutar:
+                          Toplam: {categoryQty} adet
                         </Typography>
                         <Typography variant="body2" sx={{ fontWeight: 600, color: theme.palette.success.main }}>
-                          ₺{fishType.totalAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                          ₺{categoryTotal.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
                         </Typography>
                       </Box>
-                    </CardContent>
-                  </Card>
-                </Grid>
-              ))}
-            </Grid>
+                    </Box>
+                    <Grid container spacing={2}>
+                      {fishTypes.map((fishType) => (
+                        <Grid item xs={12} sm={6} md={4} lg={3} key={fishType.fishId}>
+                          <Card variant="outlined" sx={{ height: '100%' }}>
+                            <CardContent>
+                              <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
+                                {fishType.fishName}
+                              </Typography>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                                <Typography variant="body2" color="text.secondary">
+                                  Miktar:
+                                </Typography>
+                                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                  {fishType.totalQty} adet
+                                </Typography>
+                              </Box>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <Typography variant="body2" color="text.secondary">
+                                  Tutar:
+                                </Typography>
+                                <Typography variant="body2" sx={{ fontWeight: 600, color: theme.palette.success.main }}>
+                                  ₺{fishType.totalAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                                </Typography>
+                              </Box>
+                            </CardContent>
+                          </Card>
+                        </Grid>
+                      ))}
+                    </Grid>
+                  </Box>
+                );
+              })}
+            </Stack>
           </Collapse>
         </Paper>
       )}

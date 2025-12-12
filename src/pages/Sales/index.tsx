@@ -136,10 +136,11 @@ const SalesPage = () => {
           const fish = fishes.find((f) => f.id === stock.fishTypeId);
           console.log(`🐠 Fish for ${stock.fishTypeName}:`, fish);
           // Her stok kaydı için ayrı input (farklı boylar farklı stok kayıtları)
+          // Öncelikle stoktan gelen tahmini fiyatı kullan, yoksa balığın fiyatını kullan
           initialInputs[stock.id!] = {
             quantity: 1,
             gift: 0,
-            unitPrice: fish?.unitPrice || 0,
+            unitPrice: stock.estimatedPrice || fish?.unitPrice || 0,
           };
         });
         console.log('💾 Initial inputs:', initialInputs);
@@ -225,7 +226,7 @@ const SalesPage = () => {
       [stockId]: {
         quantity: 1,
         gift: 0,
-        unitPrice: fish.unitPrice,
+        unitPrice: stockItem.estimatedPrice || fish.unitPrice,
       },
     });
   };
@@ -519,6 +520,7 @@ const SalesPage = () => {
       const itemsWithNames = saleItems.map((item) => {
         const fish = fishes.find((f) => f.id === item.fishId);
         const category = categories.find((c) => c.id === item.categoryId);
+        const tank = tanks.find((t) => t.id === item.tankId);
 
         return {
           fishId: item.fishId,
@@ -535,6 +537,7 @@ const SalesPage = () => {
           profit: Number(item.profit),
           profitMargin: Number(item.profitMargin),
           tankId: item.tankId,
+          tankName: tank?.name,
         };
       });
 
@@ -856,6 +859,16 @@ const SalesPage = () => {
                               </Typography>
                               <Typography variant="body2">{item.quantity}</Typography>
                             </Box>
+                            {item.tankId && (
+                              <Box>
+                                <Typography variant="caption" color="text.secondary">
+                                  Tank
+                                </Typography>
+                                <Typography variant="body2">
+                                  {tanks.find((t) => t.id === item.tankId)?.name || item.tankName || '-'}
+                                </Typography>
+                              </Box>
+                            )}
                             <Box>
                               <Typography variant="caption" color="text.secondary">
                                 Hediye
@@ -1145,6 +1158,16 @@ const SalesPage = () => {
                             </Typography>
                             <Typography variant="body2">{item.quantity}</Typography>
                           </Box>
+                          {item.tankId && (
+                            <Box>
+                              <Typography variant="caption" color="text.secondary">
+                                Tank
+                              </Typography>
+                              <Typography variant="body2">
+                                {tanks.find((t) => t.id === item.tankId)?.name || '-'}
+                              </Typography>
+                            </Box>
+                          )}
                           <Box>
                             <Typography variant="caption" color="text.secondary">
                               Hediye

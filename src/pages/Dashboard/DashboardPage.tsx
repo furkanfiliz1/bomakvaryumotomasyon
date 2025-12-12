@@ -26,6 +26,7 @@ import { Expense } from '../../types/expense';
 import { Collection } from '../../types/collection';
 import { CashTransaction } from '../../types/cash';
 import { Tank, TankStock } from '../../types/tank';
+import { formatTurkishCurrency } from '../../utils/currency';
 
 // Analytics utilities
 import {
@@ -121,8 +122,20 @@ const DashboardPage = () => {
   const customerCollections = calculateCustomerCollections(sales, collections);
   const profitMargins = calculateProfitMargins(sales, purchases, expenses, selectedYear);
   const topProducts = getTopProducts(sales, fishes, 5);
-  const topFishSales = getTopProducts(sales, fishes, 50); // En çok satılan 10 balık
+  const topFishSales = getTopProducts(sales, fishes, 10); // En çok satılan 10 balık
+  const allFishSales = getTopProducts(sales, fishes, 9999); // Tüm balıklar
   const recentActivities = getRecentActivities(sales, purchases, expenses, collections, 10);
+
+  // Kendi üretim ve al-sat balıkları ayırma
+  const ownProductionFish = allFishSales.filter((fish) => fish.saleType === 'own-production');
+  const resaleFish = allFishSales.filter((fish) => fish.saleType === 'resale');
+
+  // Kendi üretim toplamları
+  const ownProductionTotalSales = ownProductionFish.reduce((sum, fish) => sum + fish.totalAmount, 0);
+
+  // Al-sat toplamları
+  const resaleTotalSales = resaleFish.reduce((sum, fish) => sum + fish.totalAmount, 0);
+  const resaleTotalProfit = resaleFish.reduce((sum, fish) => sum + fish.totalProfit, 0);
 
   if (loading) {
     return (
@@ -164,7 +177,7 @@ const DashboardPage = () => {
             <Grid item xs={12} sm={6} md={3}>
               <StatCard
                 title="Toplam Satış Geliri"
-                value={`₺${stats.totalRevenue.toFixed(2)}`}
+                value={formatTurkishCurrency(stats.totalRevenue)}
                 subtitle={`${stats.salesCount} satış`}
                 icon="revenue"
                 color="success"
@@ -172,8 +185,36 @@ const DashboardPage = () => {
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
               <StatCard
+                title="Kendi Üretim Satış"
+                value={formatTurkishCurrency(ownProductionTotalSales)}
+                subtitle={`${ownProductionFish.length} farklı balık türü`}
+                icon="revenue"
+                color="success"
+              />
+            </Grid>
+
+            <Grid item xs={12} sm={6} md={3}>
+              <StatCard
+                title="Al-Sat Balığı Satış"
+                value={formatTurkishCurrency(resaleTotalSales)}
+                subtitle={`${resaleFish.length} farklı balık türü`}
+                icon="revenue"
+                color="info"
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <StatCard
+                title="Al-Sat Balığı Kar"
+                value={formatTurkishCurrency(resaleTotalProfit)}
+                subtitle={`%${resaleTotalSales > 0 ? ((resaleTotalProfit / resaleTotalSales) * 100).toFixed(1) : 0} kar marjı`}
+                icon="profit"
+                color="info"
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <StatCard
                 title="Toplam Alış"
-                value={`₺${stats.totalPurchases.toFixed(2)}`}
+                value={formatTurkishCurrency(stats.totalPurchases)}
                 subtitle={`${stats.purchaseCount} alış`}
                 icon="expense"
                 color="warning"
@@ -182,7 +223,7 @@ const DashboardPage = () => {
             <Grid item xs={12} sm={6} md={3}>
               <StatCard
                 title="Toplam Gider"
-                value={`₺${stats.totalExpensesOnly.toFixed(2)}`}
+                value={formatTurkishCurrency(stats.totalExpensesOnly)}
                 subtitle={`${stats.expenseCount} gider`}
                 icon="expense"
                 color="error"
@@ -191,45 +232,19 @@ const DashboardPage = () => {
             <Grid item xs={12} sm={6} md={3}>
               <StatCard
                 title="Kasa Bakiyesi"
-                value={`₺${stats.totalCashBalance.toFixed(2)}`}
+                value={formatTurkishCurrency(stats.totalCashBalance)}
                 subtitle={`${cashTransactions.length} işlem`}
                 icon="cash"
                 color="info"
               />
             </Grid>
-          </Grid>
-
-          {/* Kar Analizi Kartları */}
-          <Grid container spacing={3} sx={{ mb: 4 }}>
-            <Grid item xs={12} sm={6} md={4}>
+            <Grid item xs={12} sm={6} md={3}>
               <StatCard
-                title="Satışlardan Brüt Kar(Al Satlardan)"
-                value={`₺${stats.salesProfit.toFixed(2)}`}
-                subtitle={
-                  stats.salesProfitMargin > 0
-                    ? `%${stats.salesProfitMargin.toFixed(1)} kar marjı`
-                    : 'Maliyet bilgisi eksik'
-                }
-                icon="profit"
-                color={stats.salesProfit >= 0 ? 'success' : 'error'}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6} md={4}>
-              <StatCard
-                title="Net Kar (Giderler Dahil)"
-                value={`₺${stats.totalProfit.toFixed(2)}`}
-                subtitle={`%${stats.profitMargin.toFixed(1)} kar marjı`}
-                icon="profit"
-                color={stats.totalProfit >= 0 ? 'success' : 'error'}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6} md={4}>
-              <StatCard
-                title="Toplam Maliyet (Alış+Gider)"
-                value={`₺${stats.totalExpenses.toFixed(2)}`}
-                subtitle={`${stats.purchaseCount + stats.expenseCount} işlem`}
-                icon="expense"
-                color="error"
+                title="Tahsilat Oranı"
+                value={`${stats.collectionCount} adet`}
+                subtitle="Toplam tahsilat"
+                icon="sales"
+                color="success"
               />
             </Grid>
           </Grid>
@@ -239,10 +254,21 @@ const DashboardPage = () => {
             <Grid item xs={12} sm={6} md={3}>
               <StatCard
                 title="Stok Değeri"
-                value={`₺${stats.stockValue.toFixed(2)}`}
+                value={formatTurkishCurrency(stats.stockValue)}
                 subtitle={`${stats.stockCount} adet ürün`}
                 icon="stock"
                 color="primary"
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <StatCard
+                title="Tahmini Satış Değeri"
+                value={formatTurkishCurrency(
+                  tankStocks.reduce((sum, s) => sum + s.quantity * (s.estimatedPrice || 0), 0),
+                )}
+                subtitle={`${tankStocks.filter((s) => (s.estimatedPrice || 0) > 0).length} fiyatlı stok`}
+                icon="revenue"
+                color="info"
               />
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
@@ -258,18 +284,9 @@ const DashboardPage = () => {
               <StatCard
                 title="Balık Ölümü"
                 value={stats.totalFishDeaths}
-                subtitle={`₺${stats.totalDeathLoss.toFixed(2)} zarar`}
+                subtitle={`${formatTurkishCurrency(stats.totalDeathLoss)} zarar`}
                 icon="warning"
                 color="error"
-              />
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <StatCard
-                title="Tahsilat Oranı"
-                value={`${stats.collectionCount} adet`}
-                subtitle="Toplam tahsilat"
-                icon="sales"
-                color="success"
               />
             </Grid>
           </Grid>

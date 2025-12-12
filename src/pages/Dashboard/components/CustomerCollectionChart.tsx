@@ -1,5 +1,6 @@
 import { Box, Paper, Typography, LinearProgress } from '@mui/material';
 import { CustomerCollectionSummary } from '../dashboard-analytics.types';
+import { formatTurkishCurrency } from '../../../utils/currency';
 
 interface CustomerCollectionChartProps {
   data: CustomerCollectionSummary[];
@@ -55,10 +56,10 @@ export const CustomerCollectionChart = ({ data }: CustomerCollectionChartProps) 
               />
               <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
                 <Typography variant="caption" color="text.secondary">
-                  Toplam: ₺{customer.totalSales.toFixed(2)}
+                  Toplam: {formatTurkishCurrency(customer.totalSales)}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  Kalan: ₺{customer.remaining.toFixed(2)}
+                  Kalan: {formatTurkishCurrency(customer.remaining)}
                 </Typography>
               </Box>
             </Box>

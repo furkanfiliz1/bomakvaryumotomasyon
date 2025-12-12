@@ -10,7 +10,7 @@ export const ExpenseCategoryChart = ({ data }: ExpenseCategoryChartProps) => {
   const chartData = data.map((item, index) => ({
     id: index,
     value: item.amount,
-    label: `${item.category} (${item.percentage.toFixed(1)}%)`,
+    label: `${item.category}: ${item.amount.toLocaleString('tr-TR')} TL (${item.percentage.toFixed(1)}%)`,
   }));
 
   return (
@@ -27,12 +27,12 @@ export const ExpenseCategoryChart = ({ data }: ExpenseCategoryChartProps) => {
               faded: { innerRadius: 30, additionalRadius: -30, color: 'gray' },
             },
           ]}
-          height={300}
-          margin={{ right: 200 }}
+          height={500}
+          margin={{ bottom: 220 }}
           slotProps={{
             legend: {
-              direction: 'column',
-              position: { vertical: 'middle', horizontal: 'right' },
+              direction: 'row',
+              position: { vertical: 'bottom', horizontal: 'middle' },
               padding: 0,
             },
           }}

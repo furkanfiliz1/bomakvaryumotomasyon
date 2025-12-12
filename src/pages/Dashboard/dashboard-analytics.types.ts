@@ -66,6 +66,8 @@ export interface TopProduct {
   revenue: number;
   averagePrice: number;
   totalAmount: number;
+  totalProfit: number;
+  saleType: 'own-production' | 'resale'; // Kendi üretimi mi yoksa al-sat mı
 }
 
 export interface RecentActivity {

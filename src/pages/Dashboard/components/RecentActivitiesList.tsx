@@ -1,6 +1,7 @@
 import { Box, Paper, Typography, Chip } from '@mui/material';
 import { RecentActivity } from '../dashboard-analytics.types';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import { formatTurkishCurrency } from '../../../utils/currency';
 import TrendingDownIcon from '@mui/icons-material/TrendingDown';
 import ReceiptIcon from '@mui/icons-material/Receipt';
 import PaymentIcon from '@mui/icons-material/Payment';
@@ -82,7 +83,8 @@ export const RecentActivitiesList = ({ data }: RecentActivitiesListProps) => {
                     color: activity.type === 'sale' || activity.type === 'collection' ? 'success.main' : 'error.main',
                     ml: 2,
                   }}>
-                  {activity.type === 'sale' || activity.type === 'collection' ? '+' : '-'}₺{activity.amount.toFixed(2)}
+                  {activity.type === 'sale' || activity.type === 'collection' ? '+' : '-'}
+                  {formatTurkishCurrency(activity.amount)}
                 </Typography>
               </Box>
             );

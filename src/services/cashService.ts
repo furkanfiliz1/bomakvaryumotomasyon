@@ -34,9 +34,18 @@ class CashService {
         userId: transaction.userId,
         username: transaction.username,
         balance: 0,
+        totalIncome: 0,
+        totalExpense: 0,
       };
 
-      existing.balance += transaction.type === 'income' ? Number(transaction.amount) : -Number(transaction.amount);
+      if (transaction.type === 'income') {
+        existing.balance += Number(transaction.amount);
+        existing.totalIncome += Number(transaction.amount);
+      } else {
+        existing.balance -= Number(transaction.amount);
+        existing.totalExpense += Number(transaction.amount);
+      }
+      
       balanceMap.set(transaction.userId, existing);
     });
 

@@ -25,6 +25,7 @@ export interface TankStock {
   quantity: number;
   unitCost?: number; // Birim maliyet (0 = kendi üretim)
   totalCost?: number; // Toplam maliyet (quantity * unitCost)
+  estimatedPrice?: number; // Tahmini satış fiyatı
   deathCount?: number; // Toplam ölü balık sayısı
   totalDeathLoss?: number; // Ölümlerden kaynaklanan toplam zarar (deathCount * unitCost)
   lastUpdated?: Timestamp;

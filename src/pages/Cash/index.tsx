@@ -32,15 +32,17 @@ import RemoveIcon from '@mui/icons-material/Remove';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { useState, useEffect, useMemo } from 'react';
-import { useNotice } from '@components';
-import { useForm, Controller } from 'react-hook-form';
-import { yupResolver } from '@hookform/resolvers/yup';
-import { cashTransactionSchema, CashTransactionFormData } from './cash.validation';
+import { useNotice, Form } from '@components';
+import { useForm } from 'react-hook-form';
+import { createCashTransactionSchema, CashTransactionFormData } from './cash.validation';
 import { cashService } from '../../services/cashService';
 import { userService } from '../../services/userService';
+import { expenseService } from '../../services/expenseService';
 import { CashTransaction, CashBalance } from '../../types/cash';
 import { User } from '../../types/user';
+import { Expense } from '../../types/expense';
 import useResponsive from '../../hooks/useResponsive';
+import { formatTurkishCurrency } from '../../utils/currency';
 
 const CashPage = () => {
   const theme = useTheme();
@@ -50,6 +52,7 @@ const CashPage = () => {
   const [transactions, setTransactions] = useState<CashTransaction[]>([]);
   const [balances, setBalances] = useState<CashBalance[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(false);
   const [openDialog, setOpenDialog] = useState(false);
   const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
@@ -58,21 +61,25 @@ const CashPage = () => {
   const [filterStartDate, setFilterStartDate] = useState<string>('');
   const [filterEndDate, setFilterEndDate] = useState<string>('');
 
+  // Create schema with current users
+  const cashTransactionSchema = useMemo(() => createCashTransactionSchema(users), [users]);
+
   const form = useForm<CashTransactionFormData>({
     defaultValues: { userId: '', amount: 0, type: 'income', description: '' },
-    resolver: yupResolver(cashTransactionSchema),
   });
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const [transactionsData, usersData] = await Promise.all([
+      const [transactionsData, usersData, expensesData] = await Promise.all([
         cashService.getAllTransactions(),
         userService.getAllUsers(),
+        expenseService.getAllExpenses(),
       ]);
 
       setTransactions(transactionsData);
       setUsers(usersData);
+      setExpenses(expensesData);
 
       const balancesData = await cashService.getBalanceByUser(transactionsData);
       setBalances(balancesData);
@@ -100,7 +107,10 @@ const CashPage = () => {
       const user = users.find((u) => u.id === values.userId);
 
       await cashService.addTransaction({
-        ...values,
+        userId: values.userId,
+        type: values.type as 'income' | 'expense',
+        amount: values.amount,
+        description: values.description,
         username: user?.username || '',
       });
 
@@ -156,7 +166,36 @@ const CashPage = () => {
     }
   };
 
-  const totalBalance = balances.reduce((sum, b) => sum + b.balance, 0);
+  // Ana kullanıcı ID'si (diğer kullanıcılar yatırımcı olarak kabul edilir)
+  const MAIN_USER_ID = 'CEUQM60I32jmou5sA4rU';
+
+  // Sadece ana kullanıcının bakiyesini hesapla
+  const mainUserBalance = balances.find((b) => b.userId === MAIN_USER_ID);
+  const totalBalance = mainUserBalance?.balance || 0;
+
+  // Diğer kullanıcılar yatırımcı olarak kabul edilir
+  const investorBalances = balances.filter((b) => b.userId !== MAIN_USER_ID);
+
+  // Her kullanıcı için kart harcamalarını hesapla
+  const cardExpensesByUser = useMemo(() => {
+    const expenseMap: { [userId: string]: number } = {};
+
+    expenses.forEach((expense) => {
+      if (expense.paymentType === 'kart' && expense.userId) {
+        expenseMap[expense.userId] = (expenseMap[expense.userId] || 0) + (expense.amount || 0);
+      }
+    });
+
+    return expenseMap;
+  }, [expenses]);
+
+  // Yatırımcılar için toplam cepten çıkan parayı hesapla (Gider + Kart Harcamaları)
+  const totalOutOfPocket = useMemo(() => {
+    return investorBalances.reduce((total, balance) => {
+      const outOfPocket = balance.totalExpense + (cardExpensesByUser[balance.userId] || 0);
+      return total + outOfPocket;
+    }, 0);
+  }, [investorBalances, cardExpensesByUser]);
 
   // Filtered transactions
   const filteredTransactions = useMemo(() => {
@@ -340,32 +379,83 @@ const CashPage = () => {
                 Toplam Bakiye
               </Typography>
               <Typography variant="h4" sx={{ fontWeight: 600 }}>
-                ₺{totalBalance.toFixed(2)}
+                {formatTurkishCurrency(totalBalance)}
               </Typography>
             </CardContent>
           </Card>
         </Grid>
       </Grid>
 
-      {/* Kullanıcı Bakiyeleri */}
+      {/* Kullanıcı Bakiyeleri - Yatırımcılar */}
+      <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, fontSize: { xs: '1rem', sm: '1.25rem' } }}>
+        Yatırımcı Bakiyeleri
+      </Typography>
       {isMobile ? (
         <Stack spacing={2} sx={{ mb: 3 }}>
-          {balances.map((balance) => (
+          {investorBalances.map((balance) => (
             <Card key={balance.userId} variant="outlined">
               <CardContent>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                    {balance.username}
+                <Typography variant="body1" sx={{ fontWeight: 600, mb: 2 }}>
+                  {balance.username}
+                </Typography>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Gelir
                   </Typography>
                   <Chip
-                    label={`₺${balance.balance.toFixed(2)}`}
-                    color={balance.balance >= 0 ? 'success' : 'error'}
+                    label={formatTurkishCurrency(balance.totalIncome)}
+                    color="success"
                     size="small"
+                    variant="outlined"
+                  />
+                </Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Gider
+                  </Typography>
+                  <Chip
+                    label={formatTurkishCurrency(balance.totalExpense)}
+                    color="error"
+                    size="small"
+                    variant="outlined"
+                  />
+                </Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Kart Harcamaları
+                  </Typography>
+                  <Chip
+                    label={formatTurkishCurrency(cardExpensesByUser[balance.userId] || 0)}
+                    color="warning"
+                    size="small"
+                    variant="outlined"
+                  />
+                </Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Cepten Çıkan
+                  </Typography>
+                  <Chip
+                    label={formatTurkishCurrency(balance.totalExpense + (cardExpensesByUser[balance.userId] || 0))}
+                    color="info"
+                    size="small"
+                    variant="outlined"
                   />
                 </Box>
               </CardContent>
             </Card>
           ))}
+          {/* Toplam Cepten Çıkan */}
+          <Card sx={{ background: theme.palette.primary.light }}>
+            <CardContent>
+              <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
+                Toplam Cepten Çıkan
+              </Typography>
+              <Typography variant="h4" sx={{ fontWeight: 600 }}>
+                {formatTurkishCurrency(totalOutOfPocket)}
+              </Typography>
+            </CardContent>
+          </Card>
         </Stack>
       ) : (
         <TableContainer component={Paper} sx={{ mb: 3 }}>
@@ -374,23 +464,95 @@ const CashPage = () => {
               <TableRow>
                 <TableCell sx={{ fontWeight: 600 }}>Kullanıcı</TableCell>
                 <TableCell sx={{ fontWeight: 600 }} align="right">
-                  Bakiye
+                  Gelir
+                </TableCell>
+                <TableCell sx={{ fontWeight: 600 }} align="right">
+                  Gider
+                </TableCell>
+                <TableCell sx={{ fontWeight: 600 }} align="right">
+                  Kart Harcamaları
+                </TableCell>
+                <TableCell sx={{ fontWeight: 600 }} align="right">
+                  Cepten Çıkan
                 </TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {balances.map((balance) => (
+              {investorBalances.map((balance) => (
                 <TableRow key={balance.userId}>
                   <TableCell>{balance.username}</TableCell>
                   <TableCell align="right">
                     <Chip
-                      label={`₺${balance.balance.toFixed(2)}`}
-                      color={balance.balance >= 0 ? 'success' : 'error'}
+                      label={formatTurkishCurrency(balance.totalIncome)}
+                      color="success"
                       size="small"
+                      variant="outlined"
+                    />
+                  </TableCell>
+                  <TableCell align="right">
+                    <Chip
+                      label={formatTurkishCurrency(balance.totalExpense)}
+                      color="error"
+                      size="small"
+                      variant="outlined"
+                    />
+                  </TableCell>
+                  <TableCell align="right">
+                    <Chip
+                      label={formatTurkishCurrency(cardExpensesByUser[balance.userId] || 0)}
+                      color="warning"
+                      size="small"
+                      variant="outlined"
+                    />
+                  </TableCell>
+                  <TableCell align="right">
+                    <Chip
+                      label={formatTurkishCurrency(balance.totalExpense + (cardExpensesByUser[balance.userId] || 0))}
+                      color="info"
+                      size="small"
+                      variant="outlined"
                     />
                   </TableCell>
                 </TableRow>
               ))}
+              {/* Toplam Satırı */}
+              <TableRow sx={{ backgroundColor: theme.palette.primary.light }}>
+                <TableCell sx={{ fontWeight: 700, fontSize: '1.1rem' }}>TOPLAM</TableCell>
+                <TableCell align="right">
+                  <Chip
+                    label={formatTurkishCurrency(investorBalances.reduce((sum, b) => sum + b.totalIncome, 0))}
+                    color="success"
+                    size="small"
+                    sx={{ fontWeight: 600 }}
+                  />
+                </TableCell>
+                <TableCell align="right">
+                  <Chip
+                    label={formatTurkishCurrency(investorBalances.reduce((sum, b) => sum + b.totalExpense, 0))}
+                    color="error"
+                    size="small"
+                    sx={{ fontWeight: 600 }}
+                  />
+                </TableCell>
+                <TableCell align="right">
+                  <Chip
+                    label={formatTurkishCurrency(
+                      investorBalances.reduce((sum, b) => sum + (cardExpensesByUser[b.userId] || 0), 0),
+                    )}
+                    color="warning"
+                    size="small"
+                    sx={{ fontWeight: 600 }}
+                  />
+                </TableCell>
+                <TableCell align="right">
+                  <Chip
+                    label={formatTurkishCurrency(totalOutOfPocket)}
+                    color="info"
+                    size="small"
+                    sx={{ fontWeight: 600 }}
+                  />
+                </TableCell>
+              </TableRow>
             </TableBody>
           </Table>
         </TableContainer>
@@ -432,7 +594,7 @@ const CashPage = () => {
                           Tutar
                         </Typography>
                         <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                          ₺{transaction.amount.toFixed(2)}
+                          {formatTurkishCurrency(transaction.amount)}
                         </Typography>
                       </Box>
                     </Grid>
@@ -512,7 +674,7 @@ const CashPage = () => {
                 filteredTransactions.map((transaction) => (
                   <TableRow key={transaction.id}>
                     <TableCell>{transaction.username}</TableCell>
-                    <TableCell>₺{transaction.amount.toFixed(2)}</TableCell>
+                    <TableCell>{formatTurkishCurrency(transaction.amount)}</TableCell>
                     <TableCell>
                       {transaction.type === 'income' ? (
                         <Chip icon={<AddIcon />} label="Gelir" color="success" size="small" />
@@ -541,78 +703,15 @@ const CashPage = () => {
       <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth fullScreen={isMobile}>
         <DialogTitle sx={{ fontWeight: 600, color: theme.palette.dark[800] }}>Yeni İşlem Ekle</DialogTitle>
         <DialogContent sx={{ pt: 3 }}>
-          <Box component="form" onSubmit={form.handleSubmit(handleAddTransaction)}>
-            <Controller
-              name="userId"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <TextField
-                  {...field}
-                  select
-                  fullWidth
-                  label="Kullanıcı"
-                  error={!!fieldState.error}
-                  helperText={fieldState.error?.message}
-                  sx={{ mb: 2 }}>
-                  {users.map((user) => (
-                    <MenuItem key={user.id} value={user.id}>
-                      {user.username}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              )}
-            />
-
-            <Controller
-              name="type"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <TextField
-                  {...field}
-                  select
-                  fullWidth
-                  label="İşlem Türü"
-                  error={!!fieldState.error}
-                  helperText={fieldState.error?.message}
-                  sx={{ mb: 2 }}>
-                  <MenuItem value="income">Gelir</MenuItem>
-                  <MenuItem value="expense">Gider</MenuItem>
-                </TextField>
-              )}
-            />
-
-            <Controller
-              name="amount"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <TextField
-                  {...field}
-                  fullWidth
-                  label="Tutar"
-                  type="number"
-                  error={!!fieldState.error}
-                  helperText={fieldState.error?.message}
-                  sx={{ mb: 2 }}
-                />
-              )}
-            />
-
-            <Controller
-              name="description"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <TextField
-                  {...field}
-                  fullWidth
-                  label="Açıklama"
-                  multiline
-                  rows={3}
-                  error={!!fieldState.error}
-                  helperText={fieldState.error?.message}
-                />
-              )}
-            />
-          </Box>
+          <Form
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            form={form as any}
+            schema={cashTransactionSchema}
+            onSubmit={(e) => {
+              e.preventDefault();
+              form.handleSubmit(handleAddTransaction)();
+            }}
+          />
         </DialogContent>
         <DialogActions sx={{ p: 2 }}>
           <Button onClick={() => setOpenDialog(false)} color="inherit">

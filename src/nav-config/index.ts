@@ -10,6 +10,7 @@ import { expensesNavConfig } from 'src/pages/Expenses/expenses.nav-config';
 import { usersNavConfig } from 'src/pages/Users/users.nav-config';
 import { cashNavConfig } from 'src/pages/Cash/cash.nav-config';
 import { collectionsNavConfig } from 'src/pages/Collections/collections.nav-config';
+import { reportsNavConfig } from 'src/pages/Reports/reports.nav-config';
 
 
 export default [
@@ -22,6 +23,8 @@ export default [
   ...suppliersNavConfig,
   ...expensesNavConfig,
   ...cashNavConfig,
+
+  ...reportsNavConfig,
 
  {
     title: 'Tank',

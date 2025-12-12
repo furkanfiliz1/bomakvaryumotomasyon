@@ -123,6 +123,7 @@ export const tankService = {
         quantity: Number(data.quantity) || 0,
         unitCost: Number(data.unitCost) || 0,
         totalCost: Number(data.totalCost) || 0,
+        estimatedPrice: Number(data.estimatedPrice) || 0,
         lastUpdated: data.lastUpdated,
       });
     });
@@ -138,7 +139,8 @@ export const tankService = {
     categoryName: string,
     quantityChange: number,
     unitCost: number = 0,
-    size: 'small' | 'medium' | 'large' = 'medium'
+    size: 'small' | 'medium' | 'large' = 'medium',
+    estimatedPrice: number = 0
   ): Promise<void> {
     // Find existing stock record with size
     const q = query(
@@ -163,6 +165,7 @@ export const tankService = {
           quantity: Number(quantityChange),
           unitCost: Number(unitCost),
           totalCost: Number(quantityChange) * Number(unitCost),
+          estimatedPrice: Number(estimatedPrice) || 0,
           lastUpdated: Timestamp.now(),
         });
       }
@@ -185,6 +188,7 @@ export const tankService = {
           quantity: Number(newQuantity),
           unitCost: Number(newUnitCost),
           totalCost: Number(newQuantity) * Number(newUnitCost),
+          estimatedPrice: Number(estimatedPrice) || Number(stockDoc.data().estimatedPrice) || 0,
           tankName,
           fishTypeName,
           categoryName,
@@ -208,7 +212,8 @@ export const tankService = {
     quantity: number,
     unitCost: number = 0,
     deathCount: number = 0,
-    size: 'small' | 'medium' | 'large' = 'medium'
+    size: 'small' | 'medium' | 'large' = 'medium',
+    estimatedPrice: number = 0
   ): Promise<void> {
     // Find existing stock record with size
     const q = query(
@@ -234,6 +239,7 @@ export const tankService = {
           quantity: Number(quantity),
           unitCost: Number(unitCost),
           totalCost: Number(quantity) * Number(unitCost),
+          estimatedPrice: Number(estimatedPrice) || 0,
           deathCount: Number(deathCount),
           totalDeathLoss: Number(totalDeathLoss),
           lastUpdated: Timestamp.now(),
@@ -249,6 +255,7 @@ export const tankService = {
           quantity: Number(quantity),
           unitCost: Number(unitCost),
           totalCost: Number(quantity) * Number(unitCost),
+          estimatedPrice: Number(estimatedPrice) || Number(stockDoc.data().estimatedPrice) || 0,
           deathCount: Number(deathCount),
           totalDeathLoss: Number(totalDeathLoss),
           tankName,
@@ -297,6 +304,7 @@ export const tankService = {
         quantity: Number(data.quantity) || 0,
         unitCost: Number(data.unitCost) || 0,
         totalCost: Number(data.totalCost) || 0,
+        estimatedPrice: Number(data.estimatedPrice) || 0,
         deathCount: Number(data.deathCount) || 0,
         totalDeathLoss: Number(data.totalDeathLoss) || 0,
         lastUpdated: data.lastUpdated,

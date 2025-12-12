@@ -1,9 +1,12 @@
-import { Paper, Typography, Box, useTheme, alpha, Card, Stack } from '@mui/material';
+import { Paper, Typography, Box, useTheme, alpha, Card, Stack, Chip } from '@mui/material';
 import { TopProduct } from '../dashboard-analytics.types';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import { formatTurkishCurrency } from '../../../utils/currency';
 import ShowChartIcon from '@mui/icons-material/ShowChart';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import InventoryIcon from '@mui/icons-material/Inventory';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 
 interface TopFishSalesListProps {
   data: TopProduct[];
@@ -131,16 +134,37 @@ export const TopFishSalesList = ({ data }: TopFishSalesListProps) => {
 
               {/* Fish Name */}
               <Box sx={{ flex: 1, minWidth: { xs: '100%', sm: 200 } }}>
-                <Typography
-                  variant="h6"
-                  sx={{
-                    fontWeight: index < 3 ? 700 : 600,
-                    color: theme.palette.dark?.[800],
-                    fontSize: { xs: '1rem', sm: '1.1rem' },
-                    lineHeight: 1.3,
-                  }}>
-                  {product.name}
-                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                  <Typography
+                    variant="h6"
+                    sx={{
+                      fontWeight: index < 3 ? 700 : 600,
+                      color: theme.palette.dark?.[800],
+                      fontSize: { xs: '1rem', sm: '1.1rem' },
+                      lineHeight: 1.3,
+                    }}>
+                    {product.name}
+                  </Typography>
+                  <Chip
+                    icon={product.saleType === 'own-production' ? <AutoAwesomeIcon /> : <SwapHorizIcon />}
+                    label={product.saleType === 'own-production' ? 'Kendi Üretim' : 'Al-Sat'}
+                    size="small"
+                    sx={{
+                      backgroundColor:
+                        product.saleType === 'own-production'
+                          ? alpha(theme.palette.success.main, 0.1)
+                          : alpha(theme.palette.info.main, 0.1),
+                      color:
+                        product.saleType === 'own-production' ? theme.palette.success.dark : theme.palette.info.dark,
+                      fontWeight: 600,
+                      fontSize: '0.7rem',
+                      height: 24,
+                      '& .MuiChip-icon': {
+                        fontSize: 14,
+                      },
+                    }}
+                  />
+                </Box>
               </Box>
 
               {/* Stats */}
@@ -206,7 +230,7 @@ export const TopFishSalesList = ({ data }: TopFishSalesListProps) => {
                         color: theme.palette.dark?.[700],
                         fontSize: { xs: '0.95rem', sm: '1.05rem' },
                       }}>
-                      ₺{product.averagePrice.toFixed(2)}
+                      {formatTurkishCurrency(product.averagePrice)}
                     </Typography>
                   </Box>
                 </Box>
@@ -236,11 +260,37 @@ export const TopFishSalesList = ({ data }: TopFishSalesListProps) => {
                         color: theme.palette.success.main,
                         fontSize: { xs: '1rem', sm: '1.1rem' },
                       }}>
-                      ₺
-                      {product.totalAmount.toLocaleString('tr-TR', {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}
+                      {formatTurkishCurrency(product.totalAmount)}
+                    </Typography>
+                  </Box>
+                </Box>
+
+                {/* Total Profit */}
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: { xs: 120, sm: 140 } }}>
+                  <Box
+                    sx={{
+                      width: { xs: 36, sm: 40 },
+                      height: { xs: 36, sm: 40 },
+                      borderRadius: '10px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: alpha(theme.palette.success.dark, 0.1),
+                    }}>
+                    <TrendingUpIcon sx={{ fontSize: { xs: 20, sm: 22 }, color: theme.palette.success.dark }} />
+                  </Box>
+                  <Box>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', display: 'block' }}>
+                      Toplam Kar
+                    </Typography>
+                    <Typography
+                      variant="body1"
+                      sx={{
+                        fontWeight: 800,
+                        color: theme.palette.success.dark,
+                        fontSize: { xs: '1rem', sm: '1.1rem' },
+                      }}>
+                      {formatTurkishCurrency(product.totalProfit)}
                     </Typography>
                   </Box>
                 </Box>
@@ -275,10 +325,7 @@ export const TopFishSalesList = ({ data }: TopFishSalesListProps) => {
               color: theme.palette.success.main,
               fontSize: { xs: '1.1rem', sm: '1.25rem' },
             }}>
-            ₺
-            {data
-              .reduce((sum, product) => sum + product.totalAmount, 0)
-              .toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            {formatTurkishCurrency(data.reduce((sum, product) => sum + product.totalAmount, 0))}
           </Typography>
         </Box>
       </Box>

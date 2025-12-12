@@ -74,7 +74,6 @@ export default function InputCurrency(props: IInputTextCurrency) {
                 onBlur={onBlur}
                 value={value}
                 onValueChange={(event) => {
-                  console.log(event.floatValue);
                   // Handle 0 value correctly - don't convert to empty string
                   const value = event.floatValue !== undefined ? event.floatValue : '';
                   onChange(value);

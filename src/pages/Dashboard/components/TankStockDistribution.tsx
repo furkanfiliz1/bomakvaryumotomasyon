@@ -52,12 +52,12 @@ export const TankStockDistribution = ({ tankStocks }: TankStockDistributionProps
               faded: { innerRadius: 30, additionalRadius: -30, color: 'gray' },
             },
           ]}
-          height={300}
-          margin={{ right: 200 }}
+          height={500}
+          margin={{ bottom: 170 }}
           slotProps={{
             legend: {
-              direction: 'column',
-              position: { vertical: 'middle', horizontal: 'right' },
+              direction: 'row',
+              position: { vertical: 'bottom', horizontal: 'middle' },
               padding: 0,
             },
           }}

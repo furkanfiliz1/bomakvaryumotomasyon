@@ -414,7 +414,12 @@ const ExpensesPage = () => {
               Filtreler
             </Typography>
           </Box>
-          <Form form={filterForm} schema={expenseFilterSchema} onSubmit={(e) => e.preventDefault()} />
+          <Form
+            key={`filter-form-${users.length}`}
+            form={filterForm}
+            schema={expenseFilterSchema}
+            onSubmit={(e) => e.preventDefault()}
+          />
           <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
             <Button
               variant="outlined"
@@ -613,6 +618,7 @@ const ExpensesPage = () => {
         </DialogTitle>
         <DialogContent sx={{ pt: 3 }}>
           <Form
+            key={`expense-form-${users.length}-${editingExpenseId || 'new'}`}
             form={editingExpenseId ? editForm : addForm}
             schema={expenseSchema}
             onSubmit={(e) => {

@@ -17,6 +17,7 @@ export interface SaleItem {
   profit?: number; // Kar (total - (soldQuantity * unitCost))
   profitMargin?: number; // Kar marjı yüzdesi
   tankId?: string; // NEW: tank where fish come from
+  tankName?: string; // NEW: tank name for display
 }
 
 export interface Sale {

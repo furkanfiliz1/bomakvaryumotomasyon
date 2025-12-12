@@ -65,25 +65,16 @@ const CategoriesPage = () => {
   });
 
   const loadCategories = async () => {
-    console.log('🔄 Kategoriler yükleniyor...');
     setLoading(true);
 
     try {
-      console.log('📍 Firestore collection: fishCategories');
-
       const categoriesCollection = collection(db, 'fishCategories');
       const snapshot = await getDocs(categoriesCollection);
-
-      console.log('📦 Firestore snapshot:', {
-        empty: snapshot.empty,
-        size: snapshot.size,
-      });
 
       const categoriesArray: FishCategory[] = [];
 
       snapshot.forEach((doc) => {
         const data = doc.data();
-        console.log(`📝 Processing category [${doc.id}]:`, data);
 
         const category: FishCategory = {
           id: doc.id,
@@ -92,15 +83,10 @@ const CategoriesPage = () => {
           createdAt: data.createdAt?.toDate() || new Date(),
         };
 
-        console.log('✅ Category processed:', category);
         categoriesArray.push(category);
       });
 
-      console.log('🎯 Final categories array:', categoriesArray);
-      console.log('🔢 Categories count:', categoriesArray.length);
-
       setCategories(categoriesArray);
-      console.log('✅ setCategories called with:', categoriesArray);
     } catch (error) {
       console.error('❌ Categories loading error:', error);
       notice({
@@ -112,13 +98,11 @@ const CategoriesPage = () => {
       setCategories([]);
     } finally {
       setLoading(false);
-      console.log('🏁 Categories loading finished');
     }
   };
 
   // Load categories on mount
   useEffect(() => {
-    console.log('🚀 Categories component mounting...');
     loadCategories();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

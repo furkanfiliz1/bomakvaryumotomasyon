@@ -34,6 +34,11 @@ export const createTankStockSchema = (
       .required('Boy seçimi zorunludur')
       .label('Balık Boyu'),
     quantity: fields.number.required('Adet zorunludur').min(1, 'Adet en az 1 olmalıdır').label('Adet'),
+    estimatedPrice: fields.number
+      .transform((value) => (isNaN(value) || value === null || value === undefined ? 0 : value))
+      .min(0, 'Fiyat negatif olamaz')
+      .default(0)
+      .label('Tahmini Satış Fiyatı (₺)'),
   });
 
 // Default schema with empty options

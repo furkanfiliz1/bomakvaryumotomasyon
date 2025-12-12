@@ -32,11 +32,9 @@ async function addTestUser() {
           role: 'admin',
           updatedAt: new Date(),
         });
-        console.log('Kullanıcı güncellendi (userName -> username):', docId);
         process.exit(0);
       }
     } else {
-      console.log('Kullanıcı zaten var (güncel formatta)');
       process.exit(0);
     }
 

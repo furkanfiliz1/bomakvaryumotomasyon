@@ -5,18 +5,20 @@ import * as fields from 'src/components/common/Form/schemas/_common';
 const categoryOptions = [
   { id: 'kira', name: 'Kira' },
   { id: 'elektrik', name: 'Elektrik' },
+  { id: 'doğalgaz', name: 'Doğalgaz' },
+  { id: 'akvaryumMalzeme', name: 'Akvaryum Malzeme' },
   { id: 'yem', name: 'Yem' },
   { id: 'poşet', name: 'Poşet' },
   { id: 'malzeme', name: 'Malzeme' },
   { id: 'kargo', name: 'Kargo' },
   { id: 'diğer', name: 'Diğer' },
+  { id: 'Kredi Taksit', name: 'Kredi Taksit' },
 ];
 
 // Payment Type Options
 const paymentTypeOptions = [
   { id: 'nakit', name: 'Nakit' },
   { id: 'kart', name: 'Kart' },
-  { id: 'havale', name: 'Havale' },
 ];
 
 // Expense Schema - userOptions will be set dynamically
@@ -27,7 +29,7 @@ export const createExpenseSchema = (userOptions: Array<{ id: string; name: strin
       .select(categoryOptions, 'string', ['id', 'name'])
       .required('Kategori zorunludur')
       .label('Kategori'),
-    amount: fields.number.required('Tutar zorunludur').label('Tutar (₺)'),
+    amount: fields.currency.required('Tutar zorunludur').label('Tutar (₺)'),
     paymentType: fields.select(paymentTypeOptions, 'string', ['id', 'name']).label('Ödeme Tipi'),
     userId: fields
       .select(userOptions, 'string', ['id', 'name'])

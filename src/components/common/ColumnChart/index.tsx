@@ -1,4 +1,4 @@
-import { currencyFormatter } from '@utils';
+import { formatTurkishCurrency } from '@utils';
 import ReactApexChart from 'react-apexcharts';
 
 interface IColumnChart {
@@ -72,14 +72,14 @@ const ColumnChart = (props: IColumnChart) => {
     tooltip: {
       y: {
         formatter: function (val: number) {
-          return currencyFormatter(val, 'TRY');
+          return formatTurkishCurrency(val);
         },
       },
     },
     yaxis: {
       labels: {
         formatter: (value: string) => {
-          return currencyFormatter(Number(value), 'TRY');
+          return formatTurkishCurrency(Number(value));
         },
       },
     },

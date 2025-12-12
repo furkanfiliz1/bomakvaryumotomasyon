@@ -1,6 +1,7 @@
 import { Box, Paper, Typography, Grid, Card, CardContent, useTheme, alpha } from '@mui/material';
 import { CategoryExpense } from '../dashboard-analytics.types';
 import HomeIcon from '@mui/icons-material/Home';
+import { formatTurkishCurrency } from '../../../utils/currency';
 import BoltIcon from '@mui/icons-material/Bolt';
 import SetMealIcon from '@mui/icons-material/SetMeal';
 import BuildIcon from '@mui/icons-material/Build';
@@ -119,7 +120,7 @@ export const ExpenseCategorySummary = ({ data }: ExpenseCategorySummaryProps) =>
                     {item.category}
                   </Typography>
                   <Typography variant="h5" sx={{ fontWeight: 700, color: color }}>
-                    ₺{item.amount.toFixed(2)}
+                    {formatTurkishCurrency(item.amount)}
                   </Typography>
                   <Box
                     sx={{
@@ -159,7 +160,7 @@ export const ExpenseCategorySummary = ({ data }: ExpenseCategorySummaryProps) =>
             Toplam Gider
           </Typography>
           <Typography variant="h5" sx={{ fontWeight: 700, color: theme.palette.primary.main }}>
-            ₺{totalAmount.toFixed(2)}
+            {formatTurkishCurrency(totalAmount)}
           </Typography>
         </Box>
         <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>

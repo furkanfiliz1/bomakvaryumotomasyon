@@ -12,4 +12,6 @@ export interface CashBalance {
   userId: string;
   username: string;
   balance: number;
+  totalIncome: number;
+  totalExpense: number;
 }

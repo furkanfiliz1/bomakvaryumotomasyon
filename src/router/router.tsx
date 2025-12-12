@@ -17,6 +17,7 @@ import { usersRouter } from 'src/pages/Users/users.routes';
 import { tanksRouter } from 'src/pages/Tanks/tanks.routes';
 import { cashRouter } from 'src/pages/Cash/cash.routes';
 import { collectionsRouter } from 'src/pages/Collections/collections.routes';
+import { reportsRouter } from 'src/pages/Reports/reports.routes';
 
 const routes: IRouteObject[] = [
   {
@@ -80,6 +81,11 @@ const routes: IRouteObject[] = [
         Tahsilatlar
        */
       ...collectionsRouter,
+
+      /**
+        Raporlar
+       */
+      ...reportsRouter,
 
       {
         path: '404',
